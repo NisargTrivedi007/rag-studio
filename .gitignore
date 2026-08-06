@@ -1,0 +1,24 @@
+## Build artifacts
+bin/
+obj/
+*.dll
+*.pdb
+*.exe
+
+## IDE
+.vs/
+.vscode/
+*.user
+*.suo
+*.sln.docstates
+
+## Dependencies
+.nuget/
+
+## OS
+.DS_Store
+Thumbs.db
+
+## Local settings
+appsettings.local.json
+.env.local
