@@ -237,6 +237,70 @@ All of the above can be added later without redesigning the core.
 
 ---
 
+## Chat Sessions (Added 2026-08-06)
+
+Alongside single-shot library chat, sessions enable ChatGPT/Gemini-style chats with:
+- Session-scoped file uploads (docs live only with that session)
+- Follow-up questions (chat history preserved and used as context)
+- Session listing and continuation
+
+### Additional Data Model
+
+```sql
+CREATE TABLE sessions (
+    id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    title      TEXT,                             -- auto: first 60 chars of first user message
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE chat_messages (
+    id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    session_id UUID REFERENCES sessions(id) ON DELETE CASCADE,
+    role       TEXT NOT NULL,                    -- 'user' or 'assistant'
+    content    TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX ON chat_messages (session_id, created_at);
+
+ALTER TABLE documents ADD COLUMN session_id UUID
+    REFERENCES sessions(id) ON DELETE CASCADE;   -- NULL = library; set = session-scoped
+```
+
+### Additional Endpoints
+
+```
+POST   /sessions                     create empty session, returns { id, createdAt }
+GET    /sessions                     list all summaries (title, docCount, msgCount, timestamps), sort updated_at DESC
+GET    /sessions/{id}                details: metadata + attached docs + full history
+DELETE /sessions/{id}                cascade delete session + docs + chunks + messages
+
+POST   /sessions/{id}/upload         upload doc scoped to this session
+POST   /sessions/{id}/chat           body: { question, libraryDocumentIds? }
+                                      returns { answer, sources, messageId }
+```
+
+### Session Chat Flow
+
+1. Load session (404 if missing)
+2. Resolve document IDs: session's own docs + optional library docs from request
+3. Load last 10 chat messages for session (5 user + 5 assistant pairs)
+4. Embed question, retrieve top-K chunks filtered by resolved doc IDs
+5. Build prompt: system + previous conversation + retrieved context + current question
+6. LLM generates answer
+7. Persist user + assistant messages; set `title` on first user message; update `updated_at`
+8. Return `{ answer, sources, messageId }`
+
+### Session-Specific Design Decisions
+
+- **Title:** auto-set from first user message (first 60 chars). No manual edit endpoint.
+- **History window:** last 10 messages. No summarization.
+- **Cascade delete:** session delete removes chat_messages + session-scoped documents; document deletion removes vector-store chunks.
+- **No expiry, no pagination, no auth** — single-user learning project.
+- **Library `/chat` and `/documents/*` unchanged** — both models coexist.
+
+---
+
 ## Configuration (appsettings.json shape)
 
 ```json

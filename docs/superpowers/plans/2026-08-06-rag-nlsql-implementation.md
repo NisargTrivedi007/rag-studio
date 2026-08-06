@@ -60,10 +60,16 @@ RagAndAI.sln
 │   │       ├── SchemaInspector.cs             — reads information_schema via Npgsql
 │   │       ├── SqlPromptBuilder.cs            — schema + question → prompt string
 │   │       └── SqlValidator.cs               — blocks destructive SQL, cleans LLM output
-│   └── Endpoints/
-│       ├── DocumentEndpoints.cs               — /documents/*
-│       ├── ChatEndpoints.cs                   — POST /chat
-│       └── SqlEndpoints.cs                    — /sql/*, GET /health
+│   └── Features/
+│       ├── Documents/
+│       │   ├── Upload.cs                       — POST /documents/upload
+│       │   ├── List.cs                         — GET /documents
+│       │   └── Delete.cs                       — DELETE /documents/{id}
+│       ├── Chat/
+│       │   └── Query.cs                        — POST /chat
+│       └── SqlQuery/
+│           ├── Execute.cs                      — POST /sql/query
+│           └── Schema.cs                       — GET /sql/schema
 └── tests/RagAndAI.Tests/
     ├── RagAndAI.Tests.csproj
     ├── FileParser/
@@ -1224,10 +1230,12 @@ git commit -m "feat: implement RagService.QueryAsync with vector retrieval and L
 
 ---
 
-## Task 8: Document API Endpoints
+## Task 8: Document API Endpoints (3 feature files)
 
 **Files:**
-- Create: `src/RagAndAI.Api/Endpoints/DocumentEndpoints.cs`
+- Create: `src/RagAndAI.Api/Features/Documents/Upload.cs`
+- Create: `src/RagAndAI.Api/Features/Documents/List.cs`
+- Create: `src/RagAndAI.Api/Features/Documents/Delete.cs`
 - Modify: `src/RagAndAI.Api/Program.cs`
 
 **Interfaces:**
@@ -1237,31 +1245,26 @@ git commit -m "feat: implement RagService.QueryAsync with vector retrieval and L
   - `GET /documents` → `[{ id, filename, fileType, uploadedAt }]`
   - `DELETE /documents/{id}` → 204 or 404
 
-- [ ] **Step 1: Write DocumentEndpoints**
+- [ ] **Step 1: Create Features/Documents/Upload.cs**
 
 ```csharp
-// src/RagAndAI.Api/Endpoints/DocumentEndpoints.cs
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+// src/RagAndAI.Api/Features/Documents/Upload.cs
 using RagAndAI.Api.Data;
 using RagAndAI.Api.Data.Models;
 using RagAndAI.Api.Services.FileParser;
 using RagAndAI.Api.Services.Rag;
 
-namespace RagAndAI.Api.Endpoints;
+namespace RagAndAI.Api.Features.Documents;
 
-public static class DocumentEndpoints
+public static class Upload
 {
-    public static WebApplication MapDocumentEndpoints(this WebApplication app)
+    public static RouteGroupBuilder MapUpload(this RouteGroupBuilder group)
     {
-        var group = app.MapGroup("/documents");
-        group.MapPost("/upload", UploadDocument).DisableAntiforgery();
-        group.MapGet("/", ListDocuments);
-        group.MapDelete("/{id:guid}", DeleteDocument);
-        return app;
+        group.MapPost("/upload", Handle).DisableAntiforgery();
+        return group;
     }
 
-    private static async Task<IResult> UploadDocument(
+    private static async Task<IResult> Handle(
         IFormFile file,
         AppDbContext db,
         IRagService ragService,
@@ -1308,7 +1311,6 @@ public static class DocumentEndpoints
         }
         catch (Exception ex)
         {
-            // Rollback: remove document record if ingestion fails
             db.Documents.Remove(document);
             await db.SaveChangesAsync(ct);
             return Results.Problem($"Embedding failed: {ex.Message}", statusCode: 503);
@@ -1322,8 +1324,27 @@ public static class DocumentEndpoints
             document.UploadedAt
         });
     }
+}
+```
 
-    private static async Task<IResult> ListDocuments(AppDbContext db, CancellationToken ct)
+- [ ] **Step 2: Create Features/Documents/List.cs**
+
+```csharp
+// src/RagAndAI.Api/Features/Documents/List.cs
+using Microsoft.EntityFrameworkCore;
+using RagAndAI.Api.Data;
+
+namespace RagAndAI.Api.Features.Documents;
+
+public static class List
+{
+    public static RouteGroupBuilder MapList(this RouteGroupBuilder group)
+    {
+        group.MapGet("/", Handle);
+        return group;
+    }
+
+    private static async Task<IResult> Handle(AppDbContext db, CancellationToken ct)
     {
         var docs = await db.Documents
             .OrderByDescending(d => d.UploadedAt)
@@ -1331,8 +1352,27 @@ public static class DocumentEndpoints
             .ToListAsync(ct);
         return Results.Ok(docs);
     }
+}
+```
 
-    private static async Task<IResult> DeleteDocument(
+- [ ] **Step 3: Create Features/Documents/Delete.cs**
+
+```csharp
+// src/RagAndAI.Api/Features/Documents/Delete.cs
+using RagAndAI.Api.Data;
+using RagAndAI.Api.Services.Rag;
+
+namespace RagAndAI.Api.Features.Documents;
+
+public static class Delete
+{
+    public static RouteGroupBuilder MapDelete(this RouteGroupBuilder group)
+    {
+        group.MapDelete("/{id:guid}", Handle);
+        return group;
+    }
+
+    private static async Task<IResult> Handle(
         Guid id,
         AppDbContext db,
         IRagService ragService,
@@ -1349,16 +1389,19 @@ public static class DocumentEndpoints
 }
 ```
 
-- [ ] **Step 2: Register endpoints in Program.cs**
+- [ ] **Step 4: Update Program.cs**
 
 ```csharp
-using RagAndAI.Api.Endpoints;
+using RagAndAI.Api.Features.Documents;
 
 // After app = builder.Build():
-app.MapDocumentEndpoints();
+var docs = app.MapGroup("/documents");
+docs.MapUpload();
+docs.MapList();
+docs.MapDelete();
 ```
 
-- [ ] **Step 3: Manual test — upload a .txt file**
+- [ ] **Step 5: Manual test**
 
 ```bash
 dotnet run --project src/RagAndAI.Api
@@ -1366,22 +1409,22 @@ dotnet run --project src/RagAndAI.Api
 
 ```bash
 curl -X POST http://localhost:5000/documents/upload \
-  -F "file=@/path/to/your/test.txt"
+  -F "file=@/path/to/test.txt"
 ```
 
-Expected: `201 Created` with `{ id, filename, fileType, uploadedAt }`.
+Expected: `201 Created`.
 
 ```bash
 curl http://localhost:5000/documents
 ```
 
-Expected: JSON array with the uploaded document.
+Expected: JSON array with document.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add src/RagAndAI.Api/Endpoints/DocumentEndpoints.cs src/RagAndAI.Api/Program.cs
-git commit -m "feat: add document upload, list, delete endpoints"
+git add src/RagAndAI.Api/Features/Documents/ src/RagAndAI.Api/Program.cs
+git commit -m "feat: add document upload, list, delete endpoints (feature folder)"
 ```
 
 ---
@@ -1389,30 +1432,30 @@ git commit -m "feat: add document upload, list, delete endpoints"
 ## Task 9: Chat Endpoint
 
 **Files:**
-- Create: `src/RagAndAI.Api/Endpoints/ChatEndpoints.cs`
+- Create: `src/RagAndAI.Api/Features/Chat/Query.cs`
 - Modify: `src/RagAndAI.Api/Program.cs`
 
 **Interfaces:**
 - Consumes: `IRagService`
 - Produces: `POST /chat` → `{ answer, sources }`
 
-- [ ] **Step 1: Write ChatEndpoints**
+- [ ] **Step 1: Create Features/Chat/Query.cs**
 
 ```csharp
-// src/RagAndAI.Api/Endpoints/ChatEndpoints.cs
+// src/RagAndAI.Api/Features/Chat/Query.cs
 using RagAndAI.Api.Services.Rag;
 
-namespace RagAndAI.Api.Endpoints;
+namespace RagAndAI.Api.Features.Chat;
 
-public static class ChatEndpoints
+public static class Query
 {
-    public static WebApplication MapChatEndpoints(this WebApplication app)
+    public static WebApplication MapChatQuery(this WebApplication app)
     {
-        app.MapPost("/chat", Chat);
+        app.MapPost("/chat", Handle);
         return app;
     }
 
-    private static async Task<IResult> Chat(
+    private static async Task<IResult> Handle(
         ChatRequest request,
         IRagService ragService,
         CancellationToken ct)
@@ -1443,12 +1486,15 @@ public static class ChatEndpoints
 - [ ] **Step 2: Register in Program.cs**
 
 ```csharp
-app.MapChatEndpoints();
+using RagAndAI.Api.Features.Chat;
+
+// After app = builder.Build():
+app.MapChatQuery();
 ```
 
 - [ ] **Step 3: Manual end-to-end test**
 
-First upload a document (Task 8 Step 3). Note the returned `id`. Then:
+First upload a document (Task 8 Step 5). Note the returned `id`. Then:
 
 ```bash
 curl -X POST http://localhost:5000/chat \
@@ -1461,8 +1507,8 @@ Expected: `{ "answer": "...", "sources": [...] }`. Ollama must be running with l
 - [ ] **Step 4: Commit**
 
 ```bash
-git add src/RagAndAI.Api/Endpoints/ChatEndpoints.cs src/RagAndAI.Api/Program.cs
-git commit -m "feat: add POST /chat endpoint for RAG queries"
+git add src/RagAndAI.Api/Features/Chat/ src/RagAndAI.Api/Program.cs
+git commit -m "feat: add POST /chat endpoint for RAG queries (feature folder)"
 ```
 
 ---
@@ -1999,35 +2045,34 @@ git commit -m "feat: add SqlPromptBuilder, NlToSqlService, INlToSqlService with 
 
 ---
 
-## Task 13: SQL + Health Endpoints
+## Task 13: SQL + Health Endpoints (2 feature files + health)
 
 **Files:**
-- Create: `src/RagAndAI.Api/Endpoints/SqlEndpoints.cs`
+- Create: `src/RagAndAI.Api/Features/SqlQuery/Execute.cs`
+- Create: `src/RagAndAI.Api/Features/SqlQuery/Schema.cs`
 - Modify: `src/RagAndAI.Api/Program.cs`
 
 **Interfaces:**
 - Consumes: `INlToSqlService`, `SchemaInspector`
 - Produces: `POST /sql/query`, `GET /sql/schema`, `GET /health`
 
-- [ ] **Step 1: Write SqlEndpoints**
+- [ ] **Step 1: Create Features/SqlQuery/Execute.cs**
 
 ```csharp
-// src/RagAndAI.Api/Endpoints/SqlEndpoints.cs
+// src/RagAndAI.Api/Features/SqlQuery/Execute.cs
 using RagAndAI.Api.Services.NlToSql;
 
-namespace RagAndAI.Api.Endpoints;
+namespace RagAndAI.Api.Features.SqlQuery;
 
-public static class SqlEndpoints
+public static class Execute
 {
-    public static WebApplication MapSqlEndpoints(this WebApplication app)
+    public static RouteGroupBuilder MapExecute(this RouteGroupBuilder group)
     {
-        var group = app.MapGroup("/sql");
-        group.MapPost("/query", Query);
-        group.MapGet("/schema", GetSchema);
-        return app;
+        group.MapPost("/query", Handle);
+        return group;
     }
 
-    private static async Task<IResult> Query(
+    private static async Task<IResult> Handle(
         SqlQueryRequest request,
         INlToSqlService nlToSqlService,
         CancellationToken ct)
@@ -2053,24 +2098,47 @@ public static class SqlEndpoints
         });
     }
 
-    private static async Task<IResult> GetSchema(
+    private record SqlQueryRequest(string Question);
+}
+```
+
+- [ ] **Step 2: Create Features/SqlQuery/Schema.cs**
+
+```csharp
+// src/RagAndAI.Api/Features/SqlQuery/Schema.cs
+using RagAndAI.Api.Services.NlToSql;
+
+namespace RagAndAI.Api.Features.SqlQuery;
+
+public static class Schema
+{
+    public static RouteGroupBuilder MapSchema(this RouteGroupBuilder group)
+    {
+        group.MapGet("/schema", Handle);
+        return group;
+    }
+
+    private static async Task<IResult> Handle(
         SchemaInspector inspector,
         CancellationToken ct)
     {
         var schema = await inspector.GetSchemaAsync(ct);
         return Results.Ok(new { schema });
     }
-
-    private record SqlQueryRequest(string Question);
 }
 ```
 
-- [ ] **Step 2: Add health check**
+- [ ] **Step 3: Add health check + register in Program.cs**
 
-In Program.cs, add:
+First add package:
+```bash
+dotnet add src/RagAndAI.Api package AspNetCore.HealthChecks.Npgsql
+```
 
+Then in Program.cs:
 ```csharp
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using RagAndAI.Api.Features.SqlQuery;
 
 builder.Services.AddHealthChecks()
     .AddNpgsql(builder.Configuration.GetConnectionString("Postgres")!,
@@ -2080,20 +2148,15 @@ builder.Services.AddHealthChecks()
         builder.Configuration[$"{OllamaConfig.SectionName}:Endpoint"] + "/api/tags"),
         name: "ollama",
         failureStatus: HealthStatus.Unhealthy);
-```
 
-Add Npgsql health check package:
-```bash
-dotnet add src/RagAndAI.Api package AspNetCore.HealthChecks.Npgsql
-```
-
-Register endpoints:
-```csharp
-app.MapSqlEndpoints();
+// Later, after app = builder.Build():
+var sql = app.MapGroup("/sql");
+sql.MapExecute();
+sql.MapSchema();
 app.MapHealthChecks("/health");
 ```
 
-- [ ] **Step 3: Manual test — NL-to-SQL**
+- [ ] **Step 4: Manual test — NL-to-SQL**
 
 Ensure ecommerce seed data exists (Task 14 below). Then:
 
@@ -2111,11 +2174,11 @@ curl http://localhost:5000/health
 
 Expected: `Healthy`.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
-git add src/RagAndAI.Api/Endpoints/SqlEndpoints.cs src/RagAndAI.Api/Program.cs
-git commit -m "feat: add SQL query, schema, and health endpoints"
+git add src/RagAndAI.Api/Features/SqlQuery/ src/RagAndAI.Api/Program.cs
+git commit -m "feat: add SQL query, schema, and health endpoints (feature folder)"
 ```
 
 ---
@@ -2356,6 +2419,685 @@ Expected: `Healthy` (Postgres up, Ollama reachable on host).
 ```bash
 git add Dockerfile docker-compose.yml .dockerignore
 git commit -m "feat: add Dockerfile and docker-compose with pgvector postgres"
+```
+
+---
+
+## Task 16: Session + ChatMessage Entities + Document.SessionId
+
+**Files:**
+- Create: `src/RagAndAI.Api/Data/Models/Session.cs`
+- Create: `src/RagAndAI.Api/Data/Models/ChatMessage.cs`
+- Modify: `src/RagAndAI.Api/Data/Models/Document.cs`
+- Modify: `src/RagAndAI.Api/Data/AppDbContext.cs`
+
+**Interfaces:**
+- Produces: `Session` + `ChatMessage` EF entities; `Document.SessionId` nullable FK; migration applied
+
+- [ ] **Step 1: Create Session entity**
+
+```csharp
+// src/RagAndAI.Api/Data/Models/Session.cs
+namespace RagAndAI.Api.Data.Models;
+
+public class Session
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string? Title { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+
+    public ICollection<Document> Documents { get; set; } = [];
+    public ICollection<ChatMessage> Messages { get; set; } = [];
+}
+```
+
+- [ ] **Step 2: Create ChatMessage entity**
+
+```csharp
+// src/RagAndAI.Api/Data/Models/ChatMessage.cs
+namespace RagAndAI.Api.Data.Models;
+
+public class ChatMessage
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid SessionId { get; set; }
+    public Session Session { get; set; } = null!;
+    public string Role { get; set; } = string.Empty;   // "user" or "assistant"
+    public string Content { get; set; } = string.Empty;
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+```
+
+- [ ] **Step 3: Add SessionId to Document**
+
+```csharp
+// src/RagAndAI.Api/Data/Models/Document.cs — add these
+public Guid? SessionId { get; set; }
+public Session? Session { get; set; }
+```
+
+- [ ] **Step 4: Update AppDbContext**
+
+```csharp
+public DbSet<Session> Sessions => Set<Session>();
+public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
+
+// In OnModelCreating, add:
+modelBuilder.Entity<Session>(e =>
+{
+    e.ToTable("sessions");
+    e.HasKey(x => x.Id);
+});
+
+modelBuilder.Entity<ChatMessage>(e =>
+{
+    e.ToTable("chat_messages");
+    e.HasKey(x => x.Id);
+    e.Property(x => x.SessionId).HasColumnName("session_id");
+    e.Property(x => x.CreatedAt).HasColumnName("created_at");
+    e.HasOne(x => x.Session).WithMany(x => x.Messages)
+        .HasForeignKey(x => x.SessionId).OnDelete(DeleteBehavior.Cascade);
+    e.HasIndex(x => new { x.SessionId, x.CreatedAt });
+});
+
+// In Document config, add:
+e.Property(x => x.SessionId).HasColumnName("session_id");
+e.HasOne(x => x.Session).WithMany(x => x.Documents)
+    .HasForeignKey(x => x.SessionId).OnDelete(DeleteBehavior.Cascade);
+```
+
+- [ ] **Step 5: Create + apply migration**
+
+```bash
+dotnet ef migrations add AddSessionsAndChatMessages --project src/RagAndAI.Api
+dotnet ef database update --project src/RagAndAI.Api
+```
+
+- [ ] **Step 6: Verify cascade in psql**
+
+```sql
+INSERT INTO sessions (title) VALUES ('test');
+INSERT INTO chat_messages (session_id, role, content) SELECT id, 'user', 'hi' FROM sessions LIMIT 1;
+DELETE FROM sessions;
+SELECT COUNT(*) FROM chat_messages;   -- expect 0
+```
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add src/RagAndAI.Api/Data/
+git commit -m "feat: add Session, ChatMessage entities, Document.SessionId FK"
+```
+
+---
+
+## Task 17: RagService — History-Aware QueryAsync
+
+**Files:**
+- Modify: `src/RagAndAI.Api/Services/Rag/IRagService.cs`
+- Modify: `src/RagAndAI.Api/Services/Rag/RagService.cs`
+- Modify: `src/RagAndAI.Api/Features/Chat/Query.cs` (library chat) — pass `history: null`
+- Modify: `tests/RagAndAI.Tests/Rag/RagServiceTests.cs`
+
+**Interfaces:**
+- Consumes: `IReadOnlyList<ChatMessage>?` from callers
+- Produces: `QueryAsync(question, documentIds, history, ct)` — history-aware overload
+
+- [ ] **Step 1: Update IRagService signature**
+
+```csharp
+Task<RagResult> QueryAsync(
+    string question,
+    IEnumerable<Guid> documentIds,
+    IReadOnlyList<ChatMessage>? history = null,
+    CancellationToken ct = default);
+```
+
+- [ ] **Step 2: Update RagService.QueryAsync — prepend history to prompt**
+
+Modify the prompt block to include prior conversation when `history` is non-empty:
+
+```csharp
+var historyBlock = string.Empty;
+if (history is { Count: > 0 })
+{
+    var lines = history.Select(m => $"{(m.Role == "user" ? "User" : "Assistant")}: {m.Content}");
+    historyBlock = "Previous conversation:\n" + string.Join("\n", lines) + "\n\n";
+}
+
+var prompt = $"""
+    You are a helpful assistant. Answer using ONLY the context below.
+    {(history is { Count: > 0 } ? "Prior conversation is context for follow-ups." : "")}
+    If the context doesn't contain the answer, say "I don't have enough information to answer that."
+
+    {historyBlock}Retrieved context:
+    {context}
+
+    Current question: {question}
+
+    Answer:
+    """;
+```
+
+- [ ] **Step 3: Update library chat to pass history: null**
+
+In `Features/Chat/Query.cs`, the handler call becomes:
+```csharp
+var result = await ragService.QueryAsync(request.Question, request.DocumentIds, history: null, ct);
+```
+
+- [ ] **Step 4: Add test for history-aware query**
+
+Add to `RagServiceTests.cs`:
+```csharp
+[Fact]
+public async Task QueryAsync_IncludesHistoryInPrompt_WhenProvided()
+{
+    var kernel = Substitute.For<Kernel>();
+    var config = Options.Create(new ChunkingConfig { TopK = 3, ChunkSize = 10, Overlap = 2 });
+
+    _embedding.GenerateEmbeddingsAsync(Arg.Any<IList<string>>(), cancellationToken: Arg.Any<CancellationToken>())
+        .Returns(new List<ReadOnlyMemory<float>> { new(new float[768]) });
+
+    _collection.VectorizedSearchAsync(
+            Arg.Any<ReadOnlyMemory<float>>(),
+            Arg.Any<VectorSearchOptions>(),
+            Arg.Any<CancellationToken>())
+        .Returns(AsyncEnumerable.Empty<VectorSearchResult<DocumentChunkRecord>>());
+
+    var history = new List<ChatMessage>
+    {
+        new() { Role = "user", Content = "prior question" },
+        new() { Role = "assistant", Content = "prior answer" }
+    };
+
+    var sut = new RagService(kernel, _embedding, _collection, config);
+    var result = await sut.QueryAsync("follow-up", [Guid.NewGuid()], history);
+
+    result.Should().NotBeNull();
+}
+```
+
+- [ ] **Step 5: Run tests**
+
+```bash
+dotnet test tests/RagAndAI.Tests --filter "RagServiceTests" -v
+```
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add src/RagAndAI.Api/Services/Rag/ src/RagAndAI.Api/Features/Chat/ tests/RagAndAI.Tests/Rag/
+git commit -m "feat: RagService.QueryAsync accepts optional chat history"
+```
+
+---
+
+## Task 18: Session CRUD Endpoints
+
+**Files:**
+- Create: `src/RagAndAI.Api/Features/Sessions/Create.cs`
+- Create: `src/RagAndAI.Api/Features/Sessions/List.cs`
+- Create: `src/RagAndAI.Api/Features/Sessions/Get.cs`
+- Create: `src/RagAndAI.Api/Features/Sessions/Delete.cs`
+- Modify: `src/RagAndAI.Api/Program.cs`
+
+**Interfaces:**
+- Consumes: `AppDbContext`, `IRagService` (for cascade cleanup via document deletion)
+- Produces:
+  - `POST /sessions` → `{ id, createdAt }`
+  - `GET /sessions` → `[{ id, title, createdAt, updatedAt, documentCount, messageCount }]`
+  - `GET /sessions/{id}` → `{ id, title, ..., documents: [...], messages: [...] }`
+  - `DELETE /sessions/{id}` → 204 (cascades to docs, chunks, messages)
+
+- [ ] **Step 1: Create Features/Sessions/Create.cs**
+
+```csharp
+// src/RagAndAI.Api/Features/Sessions/Create.cs
+using RagAndAI.Api.Data;
+using RagAndAI.Api.Data.Models;
+
+namespace RagAndAI.Api.Features.Sessions;
+
+public static class Create
+{
+    public static RouteGroupBuilder MapCreate(this RouteGroupBuilder group)
+    {
+        group.MapPost("/", Handle);
+        return group;
+    }
+
+    private static async Task<IResult> Handle(AppDbContext db, CancellationToken ct)
+    {
+        var session = new Session();
+        db.Sessions.Add(session);
+        await db.SaveChangesAsync(ct);
+        return Results.Created($"/sessions/{session.Id}",
+            new { session.Id, session.CreatedAt });
+    }
+}
+```
+
+- [ ] **Step 2: Create Features/Sessions/List.cs**
+
+```csharp
+// src/RagAndAI.Api/Features/Sessions/List.cs
+using Microsoft.EntityFrameworkCore;
+using RagAndAI.Api.Data;
+
+namespace RagAndAI.Api.Features.Sessions;
+
+public static class List
+{
+    public static RouteGroupBuilder MapList(this RouteGroupBuilder group)
+    {
+        group.MapGet("/", Handle);
+        return group;
+    }
+
+    private static async Task<IResult> Handle(AppDbContext db, CancellationToken ct)
+    {
+        var sessions = await db.Sessions
+            .OrderByDescending(s => s.UpdatedAt)
+            .Select(s => new
+            {
+                s.Id,
+                s.Title,
+                s.CreatedAt,
+                s.UpdatedAt,
+                documentCount = s.Documents.Count,
+                messageCount = s.Messages.Count
+            })
+            .ToListAsync(ct);
+        return Results.Ok(sessions);
+    }
+}
+```
+
+- [ ] **Step 3: Create Features/Sessions/Get.cs**
+
+```csharp
+// src/RagAndAI.Api/Features/Sessions/Get.cs
+using Microsoft.EntityFrameworkCore;
+using RagAndAI.Api.Data;
+
+namespace RagAndAI.Api.Features.Sessions;
+
+public static class Get
+{
+    public static RouteGroupBuilder MapGet(this RouteGroupBuilder group)
+    {
+        group.MapGet("/{id:guid}", Handle);
+        return group;
+    }
+
+    private static async Task<IResult> Handle(Guid id, AppDbContext db, CancellationToken ct)
+    {
+        var session = await db.Sessions
+            .Include(s => s.Documents)
+            .Include(s => s.Messages.OrderBy(m => m.CreatedAt))
+            .FirstOrDefaultAsync(s => s.Id == id, ct);
+
+        if (session is null) return Results.NotFound();
+
+        return Results.Ok(new
+        {
+            session.Id,
+            session.Title,
+            session.CreatedAt,
+            session.UpdatedAt,
+            documents = session.Documents.Select(d => new
+            {
+                d.Id, d.Filename, d.FileType, d.UploadedAt
+            }),
+            messages = session.Messages.Select(m => new
+            {
+                m.Id, m.Role, m.Content, m.CreatedAt
+            })
+        });
+    }
+}
+```
+
+- [ ] **Step 4: Create Features/Sessions/Delete.cs**
+
+Note: cascade delete via FK handles chat_messages and document rows. But SK vector-store
+chunks for those documents need explicit cleanup — call `IRagService.DeleteDocumentChunksAsync`
+per doc before removing the session.
+
+```csharp
+// src/RagAndAI.Api/Features/Sessions/Delete.cs
+using Microsoft.EntityFrameworkCore;
+using RagAndAI.Api.Data;
+using RagAndAI.Api.Services.Rag;
+
+namespace RagAndAI.Api.Features.Sessions;
+
+public static class Delete
+{
+    public static RouteGroupBuilder MapDelete(this RouteGroupBuilder group)
+    {
+        group.MapDelete("/{id:guid}", Handle);
+        return group;
+    }
+
+    private static async Task<IResult> Handle(
+        Guid id, AppDbContext db, IRagService ragService, CancellationToken ct)
+    {
+        var session = await db.Sessions
+            .Include(s => s.Documents)
+            .FirstOrDefaultAsync(s => s.Id == id, ct);
+
+        if (session is null) return Results.NotFound();
+
+        foreach (var doc in session.Documents)
+            await ragService.DeleteDocumentChunksAsync(doc.Id, ct);
+
+        db.Sessions.Remove(session);
+        await db.SaveChangesAsync(ct);
+        return Results.NoContent();
+    }
+}
+```
+
+- [ ] **Step 5: Register in Program.cs**
+
+```csharp
+using RagAndAI.Api.Features.Sessions;
+
+var sessions = app.MapGroup("/sessions");
+sessions.MapCreate();
+sessions.MapList();
+sessions.MapGet();
+sessions.MapDelete();
+```
+
+Note: `MapGet` collides with built-in `WebApplication.MapGet` — resolve via
+namespace-qualified call or rename extension method to `MapGetOne`. Simpler:
+rename our method to `MapGetOne` and the endpoint method to be clearer.
+
+Change Get.cs:
+```csharp
+public static RouteGroupBuilder MapGetOne(this RouteGroupBuilder group)
+```
+
+And in Program.cs:
+```csharp
+sessions.MapGetOne();
+```
+
+- [ ] **Step 6: Manual test**
+
+```bash
+curl -X POST http://localhost:5000/sessions
+# note the returned id
+curl http://localhost:5000/sessions
+curl http://localhost:5000/sessions/{id}
+curl -X DELETE http://localhost:5000/sessions/{id}
+```
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add src/RagAndAI.Api/Features/Sessions/ src/RagAndAI.Api/Program.cs
+git commit -m "feat: add session CRUD endpoints (Create, List, Get, Delete)"
+```
+
+---
+
+## Task 19: Session Upload Endpoint
+
+**Files:**
+- Create: `src/RagAndAI.Api/Features/Sessions/Upload.cs`
+- Modify: `src/RagAndAI.Api/Program.cs`
+
+**Interfaces:**
+- Consumes: `AppDbContext`, `IRagService.IngestAsync`, `FileParserFactory`, session id from route
+- Produces: `POST /sessions/{id}/upload` → `{ id, filename, fileType, uploadedAt, sessionId }` (201)
+
+- [ ] **Step 1: Create Features/Sessions/Upload.cs**
+
+```csharp
+// src/RagAndAI.Api/Features/Sessions/Upload.cs
+using Microsoft.EntityFrameworkCore;
+using RagAndAI.Api.Data;
+using RagAndAI.Api.Data.Models;
+using RagAndAI.Api.Services.FileParser;
+using RagAndAI.Api.Services.Rag;
+
+namespace RagAndAI.Api.Features.Sessions;
+
+public static class Upload
+{
+    public static RouteGroupBuilder MapUpload(this RouteGroupBuilder group)
+    {
+        group.MapPost("/{id:guid}/upload", Handle).DisableAntiforgery();
+        return group;
+    }
+
+    private static async Task<IResult> Handle(
+        Guid id,
+        IFormFile file,
+        AppDbContext db,
+        IRagService ragService,
+        FileParserFactory parserFactory,
+        CancellationToken ct)
+    {
+        var sessionExists = await db.Sessions.AnyAsync(s => s.Id == id, ct);
+        if (!sessionExists) return Results.NotFound(new { error = "Session not found." });
+
+        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+        IFileParser parser;
+        try { parser = parserFactory.GetParser(extension); }
+        catch (NotSupportedException ex) { return Results.BadRequest(new { error = ex.Message }); }
+
+        string extractedText;
+        try
+        {
+            await using var stream = file.OpenReadStream();
+            extractedText = await parser.ExtractTextAsync(stream, file.FileName, ct);
+        }
+        catch (Exception ex)
+        {
+            return Results.BadRequest(new { error = $"Failed to parse file: {ex.Message}" });
+        }
+
+        if (string.IsNullOrWhiteSpace(extractedText))
+            return Results.BadRequest(new { error = "Document contains no extractable text." });
+
+        var document = new Document
+        {
+            Filename = file.FileName,
+            FileType = extension.TrimStart('.'),
+            SessionId = id
+        };
+
+        db.Documents.Add(document);
+        await db.SaveChangesAsync(ct);
+
+        try
+        {
+            await ragService.IngestAsync(document.Id, extractedText, ct);
+        }
+        catch (Exception ex)
+        {
+            db.Documents.Remove(document);
+            await db.SaveChangesAsync(ct);
+            return Results.Problem($"Embedding failed: {ex.Message}", statusCode: 503);
+        }
+
+        return Results.Created($"/sessions/{id}/documents/{document.Id}", new
+        {
+            document.Id, document.Filename, document.FileType,
+            document.UploadedAt, document.SessionId
+        });
+    }
+}
+```
+
+- [ ] **Step 2: Register in Program.cs**
+
+```csharp
+sessions.MapUpload();
+```
+
+- [ ] **Step 3: Manual test**
+
+```bash
+curl -X POST http://localhost:5000/sessions
+# note session id
+curl -X POST http://localhost:5000/sessions/{sessionId}/upload -F "file=@test.pdf"
+curl http://localhost:5000/sessions/{sessionId}
+# verify document appears
+```
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add src/RagAndAI.Api/Features/Sessions/Upload.cs src/RagAndAI.Api/Program.cs
+git commit -m "feat: add session-scoped file upload endpoint"
+```
+
+---
+
+## Task 20: Session Chat Endpoint (with history)
+
+**Files:**
+- Create: `src/RagAndAI.Api/Features/Sessions/Chat.cs`
+- Modify: `src/RagAndAI.Api/Program.cs`
+
+**Interfaces:**
+- Consumes: `AppDbContext`, `IRagService.QueryAsync(question, docIds, history, ct)` (from Task 17)
+- Produces: `POST /sessions/{id}/chat` — body `{ question, libraryDocumentIds? }` → `{ answer, sources, messageId }`
+
+- [ ] **Step 1: Create Features/Sessions/Chat.cs**
+
+```csharp
+// src/RagAndAI.Api/Features/Sessions/Chat.cs
+using Microsoft.EntityFrameworkCore;
+using RagAndAI.Api.Data;
+using RagAndAI.Api.Data.Models;
+using RagAndAI.Api.Services.Rag;
+
+namespace RagAndAI.Api.Features.Sessions;
+
+public static class Chat
+{
+    private const int HistoryWindow = 10;
+
+    public static RouteGroupBuilder MapChat(this RouteGroupBuilder group)
+    {
+        group.MapPost("/{id:guid}/chat", Handle);
+        return group;
+    }
+
+    private static async Task<IResult> Handle(
+        Guid id,
+        ChatRequest request,
+        AppDbContext db,
+        IRagService ragService,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(request.Question))
+            return Results.BadRequest(new { error = "Question is required." });
+
+        var session = await db.Sessions
+            .Include(s => s.Documents)
+            .FirstOrDefaultAsync(s => s.Id == id, ct);
+        if (session is null) return Results.NotFound();
+
+        // Resolve document scope: session docs + explicit library docs
+        var docIds = session.Documents.Select(d => d.Id).ToList();
+        if (request.LibraryDocumentIds is { Count: > 0 })
+            docIds.AddRange(request.LibraryDocumentIds);
+
+        if (docIds.Count == 0)
+            return Results.BadRequest(new { error = "No documents in session and no libraryDocumentIds provided." });
+
+        // Load last N messages, oldest first
+        var history = await db.ChatMessages
+            .Where(m => m.SessionId == id)
+            .OrderByDescending(m => m.CreatedAt)
+            .Take(HistoryWindow)
+            .OrderBy(m => m.CreatedAt)
+            .ToListAsync(ct);
+
+        RagResult result;
+        try
+        {
+            result = await ragService.QueryAsync(request.Question, docIds, history, ct);
+        }
+        catch (Exception ex)
+        {
+            return Results.Problem($"Query failed: {ex.Message}", statusCode: 503);
+        }
+
+        // Persist messages
+        var userMsg = new ChatMessage { SessionId = id, Role = "user", Content = request.Question };
+        var asstMsg = new ChatMessage { SessionId = id, Role = "assistant", Content = result.Answer };
+        db.ChatMessages.Add(userMsg);
+        db.ChatMessages.Add(asstMsg);
+
+        // Set title on first user message
+        if (string.IsNullOrEmpty(session.Title))
+            session.Title = request.Question[..Math.Min(60, request.Question.Length)];
+
+        session.UpdatedAt = DateTimeOffset.UtcNow;
+        await db.SaveChangesAsync(ct);
+
+        return Results.Ok(new
+        {
+            answer = result.Answer,
+            sources = result.Sources,
+            messageId = asstMsg.Id
+        });
+    }
+
+    private record ChatRequest(string Question, List<Guid>? LibraryDocumentIds = null);
+}
+```
+
+- [ ] **Step 2: Register in Program.cs**
+
+```csharp
+sessions.MapChat();
+```
+
+- [ ] **Step 3: End-to-end manual test**
+
+```bash
+# 1. Create session
+SID=$(curl -s -X POST http://localhost:5000/sessions | jq -r .id)
+
+# 2. Upload doc
+curl -X POST http://localhost:5000/sessions/$SID/upload -F "file=@test.pdf"
+
+# 3. First question — sets title
+curl -X POST http://localhost:5000/sessions/$SID/chat \
+  -H "Content-Type: application/json" \
+  -d '{"question": "What is this document about?"}'
+
+# 4. Follow-up — uses history
+curl -X POST http://localhost:5000/sessions/$SID/chat \
+  -H "Content-Type: application/json" \
+  -d '{"question": "Tell me more about that."}'
+
+# 5. Verify list shows title + counts
+curl http://localhost:5000/sessions
+
+# 6. Get details — history present
+curl http://localhost:5000/sessions/$SID
+
+# 7. Delete
+curl -X DELETE http://localhost:5000/sessions/$SID
+```
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add src/RagAndAI.Api/Features/Sessions/Chat.cs src/RagAndAI.Api/Program.cs
+git commit -m "feat: add session chat endpoint with history and auto-title"
 ```
 
 ---
