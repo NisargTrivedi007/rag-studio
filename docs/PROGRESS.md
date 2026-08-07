@@ -6,9 +6,9 @@
 
 | | |
 |---|---|
-| **Last completed task** | Task 8 — Document library endpoints (Upload, List, Delete) |
-| **Next task** | Task 9 — Chat endpoint (POST /chat): single-shot RAG query against library documents |
-| **Tasks done** | 8 of 20 |
+| **Last completed task** | Task 12 — Health endpoint (/health) |
+| **Next task** | Task 13 — Seed ecommerce sample data (customers, products, orders) |
+| **Tasks done** | 12 of 20 |
 | **All tests green?** | Yes (15 pass, 1 skipped: PDF parser fixture) |
 | **Build clean?** | Yes |
 
@@ -26,11 +26,11 @@
 | 6 | IRagService + RagService (IngestAsync, DeleteDocumentChunksAsync) | ✅ Done |
 | 7 | RagService.QueryAsync (vector search + LLM answer) | ✅ Done |
 | 8 | Document API endpoints (Upload, List, Delete) | ✅ Done |
-| 9 | Chat endpoint | ⬜ **Next** |
-| 10 | NL-to-SQL services | ⬜ |
-| 11 | NL-to-SQL endpoints | ⬜ |
-| 12 | Health endpoint | ⬜ |
-| 13 | Seed ecommerce data | ⬜ |
+| 9 | Chat endpoint | ✅ Done |
+| 10 | NL-to-SQL services | ✅ Done |
+| 11 | NL-to-SQL endpoints | ✅ Done |
+| 12 | Health endpoint | ✅ Done |
+| 13 | Seed ecommerce data | ⬜ **Next** |
 | 14 | Docker setup | ⬜ |
 | 15 | Integration verification | ⬜ |
 | 16 | Session + ChatMessage EF entities + migration | ⬜ |
