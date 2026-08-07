@@ -6,15 +6,18 @@ public class PdfParserTests
 {
     private readonly PdfParser _sut = new();
 
-    [Fact(Skip = "Place a sample.pdf in tests/Fixtures/ to run this test")]
-    public async Task ExtractTextAsync_ReturnsText_FromValidPdf()
+    [Theory]
+    [InlineData("Static_web_quote_redacted.pdf")]
+    [InlineData("project_full_feature_quote_redacted.pdf")]
+    public async Task ExtractTextAsync_ReturnsNonEmptyText_FromPdf(string fileName)
     {
-        var fixturePath = Path.Combine(
-            AppContext.BaseDirectory, "..", "..", "..", "Fixtures", "sample.pdf");
-
-        var pdfBytes = File.ReadAllBytes(fixturePath);
+        var filePath = Path.Combine(AppContext.BaseDirectory, "Files", fileName);
+        var pdfBytes = File.ReadAllBytes(filePath);
         using var stream = new MemoryStream(pdfBytes);
 
-        var result = await _sut.ExtractTextAsync(stream, "test.pdf");
+        var result = await _sut.ExtractTextAsync(stream, fileName);
+
+        Assert.NotNull(result);
+        Assert.NotEmpty(result);
     }
 }
