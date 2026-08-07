@@ -43,6 +43,14 @@ builder.Services.AddScoped<IRagService, RagService>();
 
 var app = builder.Build();
 
+// Apply migrations and seed data
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await db.Database.MigrateAsync();
+    await SeedData.SeedAsync(db);
+}
+
 var documentsGroup = app.MapGroup("/documents").WithOpenApi();
 documentsGroup.MapPost("/upload", UploadEndpoint.Handle)
     .WithName("UploadDocument")
