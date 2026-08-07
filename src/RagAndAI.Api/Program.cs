@@ -7,6 +7,7 @@ using RagAndAI.Api.Data;
 using RagAndAI.Api.Features.Chat;
 using RagAndAI.Api.Features.Documents;
 using RagAndAI.Api.Features.Health;
+using RagAndAI.Api.Features.Sessions;
 using RagAndAI.Api.Features.SqlQuery;
 using RagAndAI.Api.Services.FileParser;
 using RagAndAI.Api.Services.NlToSql;
@@ -52,16 +53,16 @@ using (var scope = app.Services.CreateScope())
 }
 
 var documentsGroup = app.MapGroup("/documents").WithOpenApi();
-documentsGroup.MapPost("/upload", UploadEndpoint.Handle)
+documentsGroup.MapPost("/upload", RagAndAI.Api.Features.Documents.UploadEndpoint.Handle)
     .WithName("UploadDocument")
     .WithSummary("Upload document to library")
     .Accepts<IFormFile>("multipart/form-data")
     .Produces<DocumentUploadResponse>(StatusCodes.Status200OK);
-documentsGroup.MapGet("/", ListEndpoint.Handle)
+documentsGroup.MapGet("/", RagAndAI.Api.Features.Documents.ListEndpoint.Handle)
     .WithName("ListDocuments")
     .WithSummary("List all library documents")
     .Produces<List<DocumentListResponse>>(StatusCodes.Status200OK);
-documentsGroup.MapDelete("/{id}", DeleteEndpoint.Handle)
+documentsGroup.MapDelete("/{id}", RagAndAI.Api.Features.Documents.DeleteEndpoint.Handle)
     .WithName("DeleteDocument")
     .WithSummary("Delete document and its vector chunks")
     .Produces(StatusCodes.Status204NoContent)
@@ -72,6 +73,26 @@ chatGroup.MapPost("/", QueryEndpoint.Handle)
     .WithName("ChatQuery")
     .WithSummary("Query library documents with question")
     .Produces<ChatQueryResponse>(StatusCodes.Status200OK);
+
+var sessionsGroup = app.MapGroup("/sessions").WithOpenApi();
+sessionsGroup.MapPost("/", RagAndAI.Api.Features.Sessions.CreateEndpoint.Handle)
+    .WithName("CreateSession")
+    .WithSummary("Create empty chat session")
+    .Produces<RagAndAI.Api.Features.Sessions.SessionResponse>(StatusCodes.Status200OK);
+sessionsGroup.MapGet("/", RagAndAI.Api.Features.Sessions.ListEndpoint.Handle)
+    .WithName("ListSessions")
+    .WithSummary("List all sessions with summary")
+    .Produces<List<RagAndAI.Api.Features.Sessions.SessionResponse>>(StatusCodes.Status200OK);
+sessionsGroup.MapGet("/{id}", RagAndAI.Api.Features.Sessions.GetEndpoint.Handle)
+    .WithName("GetSession")
+    .WithSummary("Get session details, documents, and message history")
+    .Produces<RagAndAI.Api.Features.Sessions.SessionDetailResponse>(StatusCodes.Status200OK)
+    .Produces(StatusCodes.Status404NotFound);
+sessionsGroup.MapDelete("/{id}", RagAndAI.Api.Features.Sessions.DeleteEndpoint.Handle)
+    .WithName("DeleteSession")
+    .WithSummary("Delete session and cascade delete documents, chunks, messages")
+    .Produces(StatusCodes.Status204NoContent)
+    .Produces(StatusCodes.Status404NotFound);
 
 var sqlGroup = app.MapGroup("/sql").WithOpenApi();
 sqlGroup.MapPost("/query", ExecuteEndpoint.Handle)
