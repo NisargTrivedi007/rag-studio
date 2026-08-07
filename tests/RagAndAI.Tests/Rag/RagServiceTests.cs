@@ -44,17 +44,35 @@ public class RagServiceTests
     }
 
     [Fact]
-    public async Task QueryAsync_IsNotImplemented_ReturnsNotImplementedException()
+    public async Task QueryAsync_ReturnsAnswerAndSources_WhenChunksFound()
     {
-        // Verifies the stub is still a stub — will fail once Task 7 implements it,
-        // at which point this test should be replaced with a real query test.
+        // Arrange
+        var config = Options.Create(new ChunkingConfig { ChunkSize = 512, Overlap = 50, TopK = 2 });
+        var docId = Guid.NewGuid();
+        var question = "what is this about?";
+
+        var fakeEmbeddings = new List<ReadOnlyMemory<float>>
+        {
+            new ReadOnlyMemory<float>(new float[768]),
+            new ReadOnlyMemory<float>(new float[768])
+        };
+
+        _embedding.GenerateEmbeddingsAsync(
+                Arg.Any<IList<string>>(), cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(fakeEmbeddings);
+
         var ragService = Substitute.For<IRagService>();
-        ragService.QueryAsync(
-                Arg.Any<string>(), Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(new RagResult("", [])));
+        ragService.QueryAsync(question, Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new RagResult(
+                "This document discusses important topics.",
+                ["chunk 1 content", "chunk 2 content"])));
 
-        var result = await ragService.QueryAsync("any question", [Guid.NewGuid()]);
+        // Act
+        var result = await ragService.QueryAsync(question, [docId]);
 
+        // Assert
         result.Should().NotBeNull();
+        result.Answer.Should().NotBeEmpty();
+        result.Sources.Should().HaveCount(2);
     }
 }

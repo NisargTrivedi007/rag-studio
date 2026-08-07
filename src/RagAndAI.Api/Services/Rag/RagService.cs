@@ -1,7 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Embeddings;
 using Pgvector;
+using Pgvector.EntityFrameworkCore;
 using RagAndAI.Api.Config;
 using RagAndAI.Api.Data;
 using RagAndAI.Api.Data.Models;
@@ -10,6 +12,7 @@ namespace RagAndAI.Api.Services.Rag;
 
 public class RagService(
     ITextEmbeddingGenerationService embeddingService,
+    IChatCompletionService chatService,
     AppDbContext db,
     IOptions<ChunkingConfig> chunkingOptions) : IRagService
 {
@@ -36,8 +39,41 @@ public class RagService(
         await db.SaveChangesAsync(ct);
     }
 
-    public Task<RagResult> QueryAsync(string question, IEnumerable<Guid> documentIds, CancellationToken ct = default)
-        => throw new NotImplementedException(); // implemented in Task 7
+    public async Task<RagResult> QueryAsync(string question, IEnumerable<Guid> documentIds, CancellationToken ct = default)
+    {
+        var docIdList = documentIds.ToList();
+
+        // Embed question
+        var questionEmbedding = await embeddingService.GenerateEmbeddingsAsync([question], cancellationToken: ct);
+        var queryVector = new Vector(questionEmbedding[0].ToArray());
+
+        // Retrieve top-K chunks by cosine distance
+        var relevantChunks = await db.DocumentChunks
+            .Where(c => docIdList.Contains(c.DocumentId))
+            .OrderBy(c => c.Embedding.CosineDistance(queryVector))
+            .Take(_chunking.TopK)
+            .ToListAsync(ct);
+
+        // Build context string
+        var context = string.Join("\n---\n", relevantChunks.Select(c => c.Content));
+
+        // Build prompt
+        var systemPrompt = "You are a helpful assistant. Answer the question using ONLY the provided context. If the context does not contain the answer, say so.";
+        var userPrompt = $"Context:\n{context}\n\nQuestion: {question}";
+
+        // Call LLM
+        var history = new ChatHistory();
+        history.AddSystemMessage(systemPrompt);
+        history.AddUserMessage(userPrompt);
+
+        var response = await chatService.GetChatMessageContentAsync(history, cancellationToken: ct);
+        var answer = response.Content ?? "";
+
+        // Extract sources (chunk contents)
+        var sources = relevantChunks.Select(c => c.Content).ToList();
+
+        return new RagResult(answer, sources);
+    }
 
     public async Task DeleteDocumentChunksAsync(Guid documentId, CancellationToken ct = default)
     {
