@@ -8,6 +8,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 {
     public DbSet<Document> Documents => Set<Document>();
     public DbSet<DocumentChunkRecord> DocumentChunks => Set<DocumentChunkRecord>();
+    public DbSet<Session> Sessions => Set<Session>();
+    public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<Product> Products => Set<Product>();
     public DbSet<Order> Orders => Set<Order>();
@@ -31,6 +33,28 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 .HasColumnType("vector(768)");
             e.Property(x => x.CreatedAt).HasColumnName("created_at");
             e.HasIndex(x => x.DocumentId);
+        });
+
+        modelBuilder.Entity<Session>(e =>
+        {
+            e.ToTable("sessions");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Title).HasColumnName("title");
+            e.Property(x => x.CreatedAt).HasColumnName("created_at");
+            e.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+            e.HasMany(x => x.Documents).WithOne().HasForeignKey(x => x.SessionId).OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(x => x.Messages).WithOne(x => x.Session).HasForeignKey(x => x.SessionId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ChatMessage>(e =>
+        {
+            e.ToTable("chat_messages");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.SessionId).HasColumnName("session_id");
+            e.Property(x => x.Role).HasColumnName("role").IsRequired();
+            e.Property(x => x.Content).HasColumnName("content").IsRequired();
+            e.Property(x => x.CreatedAt).HasColumnName("created_at");
+            e.HasIndex(x => new { x.SessionId, x.CreatedAt });
         });
 
         modelBuilder.Entity<Document>(e =>
