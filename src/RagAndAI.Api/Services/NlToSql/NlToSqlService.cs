@@ -1,3 +1,4 @@
+using System.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Npgsql;
@@ -32,27 +33,26 @@ public class NlToSqlService(
 
         // Execute via raw connection
         var results = new List<Dictionary<string, object>>();
-        using (var connection = new NpgsqlConnection(db.Database.GetConnectionString()))
+        var conn = (NpgsqlConnection)db.Database.GetDbConnection();
+        var wasOpen = conn.State == ConnectionState.Open;
+        if (!wasOpen) await conn.OpenAsync(ct);
+        try
         {
-            await connection.OpenAsync(ct);
-            using (var cmd = new NpgsqlCommand(sql, connection))
-            {
-                using (var reader = await cmd.ExecuteReaderAsync(ct))
-                {
-                    var fieldCount = reader.FieldCount;
-                    var fieldNames = Enumerable.Range(0, fieldCount).Select(i => reader.GetName(i)).ToList();
+            await using var cmd = new NpgsqlCommand(sql, conn);
+            await using var reader = await cmd.ExecuteReaderAsync(ct);
 
-                    while (await reader.ReadAsync(ct))
-                    {
-                        var row = new Dictionary<string, object>();
-                        for (int i = 0; i < fieldCount; i++)
-                        {
-                            row[fieldNames[i]] = reader.GetValue(i);
-                        }
-                        results.Add(row);
-                    }
-                }
+            var fieldNames = Enumerable.Range(0, reader.FieldCount).Select(i => reader.GetName(i)).ToList();
+            while (await reader.ReadAsync(ct))
+            {
+                var row = new Dictionary<string, object>();
+                for (int i = 0; i < reader.FieldCount; i++)
+                    row[fieldNames[i]] = reader.GetValue(i);
+                results.Add(row);
             }
+        }
+        finally
+        {
+            if (!wasOpen) await conn.CloseAsync();
         }
 
         return new NlToSqlResult(sql, results);

@@ -7,6 +7,9 @@ namespace RagAndAI.Tests.Integration;
 [Collection("Integration")]
 public class SessionsTests(ApiFixture fixture)
 {
+    private static readonly string PdfPath = Path.Combine(
+        AppContext.BaseDirectory, "Files", "Static_web_quote_redacted.pdf");
+
     private async Task<Guid> CreateSessionAsync()
     {
         var response = await fixture.Client.PostAsync("/sessions/", null);
@@ -81,5 +84,51 @@ public class SessionsTests(ApiFixture fixture)
     {
         var response = await fixture.Client.DeleteAsync($"/sessions/{Guid.NewGuid()}");
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Get_IncludesUploadedDocument()
+    {
+        var id = await CreateSessionAsync();
+        using var form = new MultipartFormDataContent
+        {
+            { new StreamContent(File.OpenRead(PdfPath)), "file", "test.pdf" }
+        };
+        await fixture.Client.PostAsync($"/sessions/{id}/upload", form);
+
+        var response = await fixture.Client.GetAsync($"/sessions/{id}");
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var docs = json.GetProperty("documents");
+
+        Assert.Equal(1, docs.GetArrayLength());
+        Assert.Equal("test.pdf", docs[0].GetProperty("filename").GetString());
+
+        await DeleteSessionAsync(id);
+    }
+
+    [Fact]
+    public async Task Upload_Returns404_ForUnknownSession()
+    {
+        using var form = new MultipartFormDataContent
+        {
+            { new StreamContent(File.OpenRead(PdfPath)), "file", "test.pdf" }
+        };
+        var response = await fixture.Client.PostAsync($"/sessions/{Guid.NewGuid()}/upload", form);
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Upload_EmptyFile_Returns400()
+    {
+        var id = await CreateSessionAsync();
+        using var form = new MultipartFormDataContent
+        {
+            { new StreamContent(Stream.Null), "file", "empty.pdf" }
+        };
+        var response = await fixture.Client.PostAsync($"/sessions/{id}/upload", form);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        await DeleteSessionAsync(id);
     }
 }

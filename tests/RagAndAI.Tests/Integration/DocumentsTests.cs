@@ -80,4 +80,22 @@ public class DocumentsTests(ApiFixture fixture)
         var response = await fixture.Client.PostAsync("/documents/upload", form);
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
+
+    [Fact]
+    public async Task List_ExcludesSessionScopedDocs()
+    {
+        // Upload a doc scoped to a session — it must NOT appear in the library list
+        var sessionResponse = await fixture.Client.PostAsync("/sessions/", null);
+        var sessionId = (await sessionResponse.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+
+        using var form = BuildPdfForm();
+        var uploadResponse = await fixture.Client.PostAsync($"/sessions/{sessionId}/upload", form);
+        var sessionDocId = (await uploadResponse.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+
+        var list = await (await fixture.Client.GetAsync("/documents/")).Content.ReadFromJsonAsync<JsonElement[]>();
+
+        Assert.DoesNotContain(list!, d => d.GetProperty("id").GetGuid() == sessionDocId);
+
+        await fixture.Client.DeleteAsync($"/sessions/{sessionId}");
+    }
 }
