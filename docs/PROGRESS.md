@@ -6,9 +6,9 @@
 
 | | |
 |---|---|
-| **Last completed task** | Task 15 — Integration verification (all 15 tests pass) |
-| **Next task** | Task 16 — Session + ChatMessage EF entities (chat sessions feature) |
-| **Tasks done** | 15 of 20 |
+| **Last completed task** | Task 18 — Session CRUD endpoints |
+| **Next task** | Task 19 — Session-scoped document upload |
+| **Tasks done** | 18 of 20 |
 | **All tests green?** | Yes (15 pass, 1 skipped: PDF parser fixture) |
 | **Build clean?** | Yes |
 
@@ -33,8 +33,8 @@
 | 13 | Seed ecommerce data | ✅ Done |
 | 14 | Docker setup | ✅ Done |
 | 15 | Integration verification | ✅ Done |
-| 16 | Session + ChatMessage EF entities + migration | ⬜ **Next** |
-| 17 | IRagService history-aware QueryAsync overload | ⬜ |
-| 18 | Session CRUD endpoints | ⬜ |
-| 19 | Session-scoped upload | ⬜ |
+| 16 | Session + ChatMessage EF entities + migration | ✅ Done |
+| 17 | IRagService history-aware QueryAsync overload | ✅ Done |
+| 18 | Session CRUD endpoints | ✅ Done |
+| 19 | Session-scoped upload | ⬜ **Next** |
 | 20 | Session chat endpoint | ⬜ |
