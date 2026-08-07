@@ -6,9 +6,9 @@
 
 | | |
 |---|---|
-| **Last completed task** | Task 7 — RagService.QueryAsync with vector search, LLM chat completion, and source citations |
-| **Next task** | Task 8 — Document API endpoints (Upload, List, Delete): POST /documents/upload, GET /documents, DELETE /documents/{id} |
-| **Tasks done** | 7 of 20 |
+| **Last completed task** | Task 8 — Document library endpoints (Upload, List, Delete) |
+| **Next task** | Task 9 — Chat endpoint (POST /chat): single-shot RAG query against library documents |
+| **Tasks done** | 8 of 20 |
 | **All tests green?** | Yes (15 pass, 1 skipped: PDF parser fixture) |
 | **Build clean?** | Yes |
 
@@ -25,8 +25,8 @@
 | 5 | WordParser + ExcelParser + FileParserFactory | ✅ Done |
 | 6 | IRagService + RagService (IngestAsync, DeleteDocumentChunksAsync) | ✅ Done |
 | 7 | RagService.QueryAsync (vector search + LLM answer) | ✅ Done |
-| 8 | Document API endpoints (Upload, List, Delete) | ⬜ **Next** |
-| 9 | Chat endpoint | ⬜ |
+| 8 | Document API endpoints (Upload, List, Delete) | ✅ Done |
+| 9 | Chat endpoint | ⬜ **Next** |
 | 10 | NL-to-SQL services | ⬜ |
 | 11 | NL-to-SQL endpoints | ⬜ |
 | 12 | Health endpoint | ⬜ |
