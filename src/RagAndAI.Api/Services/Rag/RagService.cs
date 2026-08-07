@@ -39,7 +39,10 @@ public class RagService(
         await db.SaveChangesAsync(ct);
     }
 
-    public async Task<RagResult> QueryAsync(string question, IEnumerable<Guid> documentIds, CancellationToken ct = default)
+    public Task<RagResult> QueryAsync(string question, IEnumerable<Guid> documentIds, CancellationToken ct = default)
+        => QueryAsync(question, documentIds, null, ct);
+
+    public async Task<RagResult> QueryAsync(string question, IEnumerable<Guid> documentIds, IReadOnlyList<ChatMessage>? history, CancellationToken ct = default)
     {
         var docIdList = documentIds.ToList();
 
@@ -57,22 +60,46 @@ public class RagService(
         // Build context string
         var context = string.Join("\n---\n", relevantChunks.Select(c => c.Content));
 
-        // Build prompt
-        var systemPrompt = "You are a helpful assistant. Answer the question using ONLY the provided context. If the context does not contain the answer, say so.";
-        var userPrompt = $"Context:\n{context}\n\nQuestion: {question}";
+        // Build prompt with optional history
+        var systemPrompt = "You are a helpful assistant. Answer the question using ONLY the provided context. Prior conversation is for context only. If the context lacks the answer, say so.";
+        var userPrompt = BuildUserPrompt(question, context, history);
 
         // Call LLM
-        var history = new ChatHistory();
-        history.AddSystemMessage(systemPrompt);
-        history.AddUserMessage(userPrompt);
+        var chatHistory = new ChatHistory();
+        chatHistory.AddSystemMessage(systemPrompt);
+        chatHistory.AddUserMessage(userPrompt);
 
-        var response = await chatService.GetChatMessageContentAsync(history, cancellationToken: ct);
+        var response = await chatService.GetChatMessageContentAsync(chatHistory, cancellationToken: ct);
         var answer = response.Content ?? "";
 
         // Extract sources (chunk contents)
         var sources = relevantChunks.Select(c => c.Content).ToList();
 
         return new RagResult(answer, sources);
+    }
+
+    private static string BuildUserPrompt(string question, string context, IReadOnlyList<ChatMessage>? history)
+    {
+        var prompt = new System.Text.StringBuilder();
+
+        if (history != null && history.Count > 0)
+        {
+            // Include last 10 messages (5 turns)
+            var recentHistory = history.Skip(Math.Max(0, history.Count - 10)).ToList();
+            prompt.AppendLine("Previous conversation:");
+            foreach (var msg in recentHistory)
+            {
+                prompt.AppendLine($"{msg.Role}: {msg.Content}");
+            }
+            prompt.AppendLine();
+        }
+
+        prompt.AppendLine("Retrieved context:");
+        prompt.AppendLine(context);
+        prompt.AppendLine();
+        prompt.Append($"Current question: {question}");
+
+        return prompt.ToString();
     }
 
     public async Task DeleteDocumentChunksAsync(Guid documentId, CancellationToken ct = default)
