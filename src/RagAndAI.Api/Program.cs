@@ -4,8 +4,12 @@ using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Embeddings;
 using RagAndAI.Api.Config;
 using RagAndAI.Api.Data;
+using RagAndAI.Api.Features.Chat;
 using RagAndAI.Api.Features.Documents;
+using RagAndAI.Api.Features.Health;
+using RagAndAI.Api.Features.SqlQuery;
 using RagAndAI.Api.Services.FileParser;
+using RagAndAI.Api.Services.NlToSql;
 using RagAndAI.Api.Services.Rag;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -20,6 +24,10 @@ builder.Services.AddDbContext<AppDbContext>(options =>
         o => o.UseVector()));
 
 builder.Services.AddSingleton<FileParserFactory>();
+builder.Services.AddScoped<SchemaInspector>();
+builder.Services.AddScoped<SqlPromptBuilder>();
+builder.Services.AddScoped<SqlValidator>();
+builder.Services.AddScoped<NlToSqlService>();
 
 var ollamaConfig = builder.Configuration.GetSection(OllamaConfig.SectionName).Get<OllamaConfig>()!;
 
@@ -50,5 +58,27 @@ documentsGroup.MapDelete("/{id}", DeleteEndpoint.Handle)
     .WithSummary("Delete document and its vector chunks")
     .Produces(StatusCodes.Status204NoContent)
     .Produces(StatusCodes.Status404NotFound);
+
+var chatGroup = app.MapGroup("/chat").WithOpenApi();
+chatGroup.MapPost("/", QueryEndpoint.Handle)
+    .WithName("ChatQuery")
+    .WithSummary("Query library documents with question")
+    .Produces<ChatQueryResponse>(StatusCodes.Status200OK);
+
+var sqlGroup = app.MapGroup("/sql").WithOpenApi();
+sqlGroup.MapPost("/query", ExecuteEndpoint.Handle)
+    .WithName("SqlQuery")
+    .WithSummary("Execute natural language query against database")
+    .Produces<SqlQueryResponse>(StatusCodes.Status200OK);
+sqlGroup.MapGet("/schema", SchemaEndpoint.Handle)
+    .WithName("GetSchema")
+    .WithSummary("Get database schema for debugging")
+    .Produces<SchemaResponse>(StatusCodes.Status200OK);
+
+app.MapGet("/health", CheckEndpoint.Handle)
+    .WithOpenApi()
+    .WithName("HealthCheck")
+    .WithSummary("Liveness probe")
+    .Produces(StatusCodes.Status200OK);
 
 app.Run();
