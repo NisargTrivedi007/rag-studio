@@ -8,7 +8,7 @@ namespace RagAndAI.Api.Features.Documents;
 
 public class UploadEndpoint
 {
-    public static async Task<DocumentUploadResponse> Handle(
+    public static async Task<IResult> Handle(
         IFormFile file,
         FileParserFactory parserFactory,
         IRagService ragService,
@@ -16,14 +16,12 @@ public class UploadEndpoint
         CancellationToken ct)
     {
         if (file.Length == 0)
-            throw new ArgumentException("File is empty");
+            return Results.BadRequest("File is empty");
 
-        // Parse file
         using var stream = file.OpenReadStream();
         var parser = parserFactory.GetParser(Path.GetExtension(file.FileName));
         var text = await parser.ExtractTextAsync(stream, file.FileName, ct);
 
-        // Create document record
         var document = new Document
         {
             Id = Guid.NewGuid(),
@@ -36,14 +34,13 @@ public class UploadEndpoint
         db.Documents.Add(document);
         await db.SaveChangesAsync(ct);
 
-        // Ingest text
         await ragService.IngestAsync(document.Id, text, ct);
 
-        return new DocumentUploadResponse(
+        return Results.Ok(new DocumentUploadResponse(
             document.Id,
             document.Filename,
             document.FileType,
-            document.UploadedAt);
+            document.UploadedAt));
     }
 }
 

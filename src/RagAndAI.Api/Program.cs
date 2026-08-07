@@ -57,7 +57,8 @@ documentsGroup.MapPost("/upload", RagAndAI.Api.Features.Documents.UploadEndpoint
     .WithName("UploadDocument")
     .WithSummary("Upload document to library")
     .Accepts<IFormFile>("multipart/form-data")
-    .Produces<DocumentUploadResponse>(StatusCodes.Status200OK);
+    .Produces<DocumentUploadResponse>(StatusCodes.Status200OK)
+    .DisableAntiforgery();
 documentsGroup.MapGet("/", RagAndAI.Api.Features.Documents.ListEndpoint.Handle)
     .WithName("ListDocuments")
     .WithSummary("List all library documents")
@@ -99,7 +100,8 @@ sessionsGroup.MapPost("/{id}/upload", RagAndAI.Api.Features.Sessions.UploadEndpo
     .Accepts<IFormFile>("multipart/form-data")
     .Produces(StatusCodes.Status200OK)
     .Produces(StatusCodes.Status404NotFound)
-    .Produces(StatusCodes.Status400BadRequest);
+    .Produces(StatusCodes.Status400BadRequest)
+    .DisableAntiforgery();
 sessionsGroup.MapPost("/{id}/chat", RagAndAI.Api.Features.Sessions.ChatEndpoint.Handle)
     .WithName("SessionChat")
     .WithSummary("Chat within session with conversation history")
@@ -124,3 +126,5 @@ app.MapGet("/health", CheckEndpoint.Handle)
     .Produces(StatusCodes.Status200OK);
 
 app.Run();
+
+public partial class Program { }
