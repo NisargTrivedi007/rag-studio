@@ -1,0 +1,59 @@
+<aside class="flex h-full w-64 flex-col border-r border-[var(--color-border)] bg-[var(--color-panel)]">
+  <div class="p-3">
+    <button
+      (click)="store.newChat()"
+      class="flex w-full cursor-pointer items-center gap-2 rounded-lg border border-[var(--color-border)] px-3 py-2 text-sm font-medium transition hover:bg-[var(--color-panel-hover)]"
+    >
+      <app-icon name="plus" [size]="16" />
+      New chat
+    </button>
+  </div>
+
+  <div class="flex-1 overflow-y-auto px-2 pb-2">
+    <div class="mb-1 px-2 text-xs font-semibold uppercase text-[var(--color-text-muted)]">Sessions</div>
+    @for (session of store.sessions(); track session.id) {
+      <div
+        class="group flex cursor-pointer items-center justify-between rounded-md px-2 py-1.5 text-sm transition hover:bg-[var(--color-panel-hover)]"
+        [style.background]="store.currentSessionId() === session.id ? 'var(--color-panel-hover)' : ''"
+        (click)="store.selectSession(session.id)"
+      >
+        <span class="truncate">{{ session.title || 'New chat' }}</span>
+        <button
+          (click)="deleteSession($event, session.id)"
+          class="hidden cursor-pointer rounded p-1 text-[var(--color-text-muted)] transition hover:text-[var(--color-accent)] group-hover:block"
+          aria-label="Delete session"
+        >
+          <app-icon name="trash" [size]="14" />
+        </button>
+      </div>
+    } @empty {
+      <div class="px-2 py-3 text-xs text-[var(--color-text-muted)]">No sessions yet.</div>
+    }
+  </div>
+
+  <div class="border-t border-[var(--color-border)] p-2">
+    <a
+      routerLink="/library"
+      routerLinkActive="bg-[var(--color-panel-hover)]"
+      class="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm transition hover:bg-[var(--color-panel-hover)]"
+    >
+      <app-icon name="library" [size]="16" />
+      Library
+    </a>
+    <a
+      routerLink="/sql"
+      routerLinkActive="bg-[var(--color-panel-hover)]"
+      class="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm transition hover:bg-[var(--color-panel-hover)]"
+    >
+      <app-icon name="database" [size]="16" />
+      Data Explorer
+    </a>
+    <button
+      (click)="theme.toggle()"
+      class="flex w-full cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm transition hover:bg-[var(--color-panel-hover)]"
+    >
+      <app-icon [name]="theme.theme() === 'dark' ? 'sun' : 'moon'" [size]="16" />
+      {{ theme.theme() === 'dark' ? 'Light' : 'Dark' }} mode
+    </button>
+  </div>
+</aside>

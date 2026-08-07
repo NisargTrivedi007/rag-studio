@@ -1,0 +1,36 @@
+<div #scrollContainer class="mx-auto flex h-full w-full max-w-3xl flex-col overflow-y-auto px-6 py-8">
+  @if (store.hasCurrent()) {
+    @if (store.messages().length === 0) {
+      <div class="flex flex-1 items-center justify-center">
+        <p class="text-sm text-[var(--color-text-muted)]">
+          Attach a document and ask a question.
+        </p>
+      </div>
+    } @else {
+      @for (msg of store.messages(); track msg.id) {
+        <div class="mb-6" [class.flex]="msg.role === 'user'" [class.justify-end]="msg.role === 'user'">
+          @if (msg.role === 'user') {
+            <div class="max-w-[80%] rounded-2xl bg-[var(--color-panel)] px-4 py-2.5 text-sm">
+              {{ msg.content }}
+            </div>
+          } @else {
+            <div class="text-sm leading-relaxed whitespace-pre-wrap">{{ msg.content }}</div>
+          }
+        </div>
+      }
+    }
+
+    @if (store.sending()) {
+      <div class="mb-6 flex items-center gap-1">
+        <span class="h-2 w-2 animate-pulse rounded-full bg-[var(--color-primary)]" style="animation-delay: 0ms"></span>
+        <span class="h-2 w-2 animate-pulse rounded-full bg-[var(--color-primary)]" style="animation-delay: 150ms"></span>
+        <span class="h-2 w-2 animate-pulse rounded-full bg-[var(--color-primary)]" style="animation-delay: 300ms"></span>
+      </div>
+    }
+  } @else {
+    <div class="flex flex-1 flex-col items-center justify-center">
+      <h1 class="mb-2 text-3xl font-semibold">RAG & AI</h1>
+      <p class="text-sm text-[var(--color-text-muted)]">Start a new chat, or pick a session from the sidebar.</p>
+    </div>
+  }
+</div>

@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git init *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(dotnet new sln *)",
+      "Bash(dotnet new webapi *)",
+      "Bash(dotnet new xunit *)",
+      "Bash(dotnet sln add *)",
+      "Bash(dotnet add *)",
+      "Bash(dotnet build *)",
+      "Bash(git reset *)",
+      "Bash(dotnet ef migrations *)",
+      "Bash(dotnet test *)",
+      "Bash(dotnet nuget *)",
+      "Bash(xargs grep *)",
+      "Bash(dotnet ef database *)",
+      "Bash(curl *)",
+      "Bash(dotnet run *)",
+      "Bash(dotnet list *)",
+      "Bash(python \"C:/Users/Nisarg Trivedi/.claude/skills/ui-ux-pro-max/scripts/search.py\" \"AI chat interface minimal dark modern conversational\" --design-system -p \"RagAndAI UI\")",
+      "Bash(python \"C:/Users/Nisarg Trivedi/.claude/skills/ui-ux-pro-max/scripts/search.py\" \"chat streaming message input sidebar sessions\" --domain ux -n 8)",
+      "Bash(python \"C:/Users/Nisarg Trivedi/.claude/skills/ui-ux-pro-max/scripts/search.py\" \"angular chat component signal\" --stack angular)",
+      "Bash(git mv *)",
+      "Bash(dotnet clean *)",
+      "Bash(npx --yes @angular/cli@latest new ui --style=scss --routing --skip-git --package-manager=npm --ssr=false --defaults)",
+      "Bash(npm install *)",
+      "Bash(npx ng *)"
+    ]
+  }
+}
