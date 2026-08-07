@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
+using Microsoft.Extensions.Configuration;
 using Pgvector.EntityFrameworkCore;
 
 namespace RagAndAI.Api.Data;
@@ -9,10 +10,16 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
 {
     public AppDbContext CreateDbContext(string[] args)
     {
+        var config = new ConfigurationBuilder()
+            .SetBasePath(Directory.GetCurrentDirectory())
+            .AddJsonFile("appsettings.json")
+            .Build();
+
+        var connectionString = config.GetConnectionString("Postgres")
+            ?? throw new InvalidOperationException("Connection string 'Postgres' not found in appsettings.json");
+
         var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseNpgsql(
-                "Host=localhost;Database=ragdb;Username=postgres;Password=yourpassword",
-                o => o.UseVector())
+            .UseNpgsql(connectionString, o => o.UseVector())
             .Options;
         return new AppDbContext(options);
     }
