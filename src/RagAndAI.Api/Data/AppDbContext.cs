@@ -15,6 +15,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        // Register pgvector type support
         modelBuilder.HasPostgresExtension("vector");
 
         modelBuilder.Entity<DocumentChunkRecord>(e =>
@@ -24,7 +25,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.DocumentId).HasColumnName("document_id");
             e.Property(x => x.ChunkIndex).HasColumnName("chunk_index");
             e.Property(x => x.Content).HasColumnName("content");
-            e.Property(x => x.Embedding).HasColumnName("embedding").HasColumnType("vector(768)");
+            // HasColumnType tells Npgsql to use pgvector; float[] maps natively via UseVector()
+            e.Property(x => x.Embedding)
+                .HasColumnName("embedding")
+                .HasColumnType("vector(768)");
             e.Property(x => x.CreatedAt).HasColumnName("created_at");
             e.HasIndex(x => x.DocumentId);
         });

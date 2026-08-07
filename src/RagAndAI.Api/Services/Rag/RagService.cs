@@ -41,9 +41,11 @@ public class RagService(
 
     public async Task DeleteDocumentChunksAsync(Guid documentId, CancellationToken ct = default)
     {
-        await db.DocumentChunks
+        var chunks = await db.DocumentChunks
             .Where(c => c.DocumentId == documentId)
-            .ExecuteDeleteAsync(ct);
+            .ToListAsync(ct);
+        db.DocumentChunks.RemoveRange(chunks);
+        await db.SaveChangesAsync(ct);
     }
 
     private static List<string> ChunkText(string text, int chunkSize, int overlap)
