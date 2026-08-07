@@ -4,6 +4,7 @@ using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Embeddings;
 using RagAndAI.Api.Config;
 using RagAndAI.Api.Data;
+using RagAndAI.Api.Features.Documents;
 using RagAndAI.Api.Services.FileParser;
 using RagAndAI.Api.Services.Rag;
 
@@ -33,4 +34,21 @@ builder.Services.AddSingleton(kernel.GetRequiredService<IChatCompletionService>(
 builder.Services.AddScoped<IRagService, RagService>();
 
 var app = builder.Build();
+
+var documentsGroup = app.MapGroup("/documents").WithOpenApi();
+documentsGroup.MapPost("/upload", UploadEndpoint.Handle)
+    .WithName("UploadDocument")
+    .WithSummary("Upload document to library")
+    .Accepts<IFormFile>("multipart/form-data")
+    .Produces<DocumentUploadResponse>(StatusCodes.Status200OK);
+documentsGroup.MapGet("/", ListEndpoint.Handle)
+    .WithName("ListDocuments")
+    .WithSummary("List all library documents")
+    .Produces<List<DocumentListResponse>>(StatusCodes.Status200OK);
+documentsGroup.MapDelete("/{id}", DeleteEndpoint.Handle)
+    .WithName("DeleteDocument")
+    .WithSummary("Delete document and its vector chunks")
+    .Produces(StatusCodes.Status204NoContent)
+    .Produces(StatusCodes.Status404NotFound);
+
 app.Run();
