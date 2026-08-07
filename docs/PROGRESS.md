@@ -6,9 +6,9 @@
 
 | | |
 |---|---|
-| **Last completed task** | Task 12 — Health endpoint (/health) |
-| **Next task** | Task 13 — Seed ecommerce sample data (customers, products, orders) |
-| **Tasks done** | 12 of 20 |
+| **Last completed task** | Task 15 — Integration verification (all 15 tests pass) |
+| **Next task** | Task 16 — Session + ChatMessage EF entities (chat sessions feature) |
+| **Tasks done** | 15 of 20 |
 | **All tests green?** | Yes (15 pass, 1 skipped: PDF parser fixture) |
 | **Build clean?** | Yes |
 
@@ -30,10 +30,10 @@
 | 10 | NL-to-SQL services | ✅ Done |
 | 11 | NL-to-SQL endpoints | ✅ Done |
 | 12 | Health endpoint | ✅ Done |
-| 13 | Seed ecommerce data | ⬜ **Next** |
-| 14 | Docker setup | ⬜ |
-| 15 | Integration verification | ⬜ |
-| 16 | Session + ChatMessage EF entities + migration | ⬜ |
+| 13 | Seed ecommerce data | ✅ Done |
+| 14 | Docker setup | ✅ Done |
+| 15 | Integration verification | ✅ Done |
+| 16 | Session + ChatMessage EF entities + migration | ⬜ **Next** |
 | 17 | IRagService history-aware QueryAsync overload | ⬜ |
 | 18 | Session CRUD endpoints | ⬜ |
 | 19 | Session-scoped upload | ⬜ |
