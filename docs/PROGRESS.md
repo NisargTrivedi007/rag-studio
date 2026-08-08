@@ -6,12 +6,14 @@
 
 | | |
 |---|---|
-| **Last completed task** | All 20 tasks complete + local environment setup |
-| **Next task** | Ready for feature work or deployment |
-| **Tasks done** | **20 of 20** ✅ |
-| **All tests green?** | Yes (17 pass, 0 skipped) |
-| **Build clean?** | Yes (warnings only: Microsoft.OpenApi CVE — unfixable until Microsoft releases a 2.0.x patch; FluentAssertions non-commercial license — acceptable for learning project) |
-| **Environment status** | ✅ PostgreSQL 17 + pgvector installed, ragdb created, migrations applied, Ollama models ready, API responding |
+| **Last completed task** | Angular 22 UI complete — library, SQL, chat, toast, animations, markdown, tests |
+| **Next task** | Run E2E tests end-to-end (`cd ui && npm run e2e`) with API + ng serve both running |
+| **Tasks done** | **20 of 20 API** ✅ + **UI complete** ✅ |
+| **API tests green?** | Yes (17 pass, 0 skipped) |
+| **UI unit tests green?** | Yes (10 pass) — `cd ui && npm test` |
+| **E2E tests written?** | Yes (Playwright — chat, library, SQL) — not yet run against live stack |
+| **Build clean?** | Yes — `ng build` compiles without errors |
+| **Environment status** | ✅ PostgreSQL 17 + pgvector, ragdb, Ollama models, API on :5247, UI on :4200 (proxy → API) |
 
 ---
 

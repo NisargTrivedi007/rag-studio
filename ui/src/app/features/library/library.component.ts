@@ -1,4 +1,4 @@
-import { Component, ElementRef, inject, signal, viewChild } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { rxResource } from '@angular/core/rxjs-interop';
@@ -16,7 +16,6 @@ import { IconComponent } from '../../shared/icons/icon.component';
 export class LibraryComponent {
   private api = inject(DocumentsApi);
   protected uploading = signal(false);
-  protected fileInputEl: HTMLInputElement | null = null;
 
   private docsResource = rxResource<DocumentSummary[], void>({
     stream: () => this.api.list(),
@@ -26,7 +25,8 @@ export class LibraryComponent {
   protected loading = this.docsResource.isLoading;
 
   async upload(event: Event) {
-    const file = (event.target as HTMLInputElement).files?.[0];
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
     if (!file) return;
     this.uploading.set(true);
     try {
@@ -34,7 +34,7 @@ export class LibraryComponent {
       this.docsResource.reload();
     } finally {
       this.uploading.set(false);
-      if (this.fileInputEl) this.fileInputEl.value = '';
+      input.value = '';
     }
   }
 

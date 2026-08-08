@@ -23,3 +23,9 @@ Thumbs.db
 appsettings.local.json
 .env.local
 .claude/settings.local.json
+
+## UI build & test artifacts
+ui/dist/
+ui/node_modules/
+ui/test-results/
+ui/playwright-report/
