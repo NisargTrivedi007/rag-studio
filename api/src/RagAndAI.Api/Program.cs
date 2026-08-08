@@ -15,6 +15,9 @@ using RagAndAI.Api.Services.Rag;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// CORS service
+builder.Services.AddCors();
+
 builder.Services.Configure<OllamaConfig>(
     builder.Configuration.GetSection(OllamaConfig.SectionName));
 builder.Services.Configure<ChunkingConfig>(
@@ -43,6 +46,12 @@ builder.Services.AddSingleton(kernel.GetRequiredService<IChatCompletionService>(
 builder.Services.AddScoped<IRagService, RagService>();
 
 var app = builder.Build();
+
+// CORS for Angular UI (localhost:4200 in dev, ragui in Docker)
+app.UseCors(policy => policy
+    .AllowAnyOrigin()
+    .AllowAnyMethod()
+    .AllowAnyHeader());
 
 // Apply migrations and seed data
 using (var scope = app.Services.CreateScope())
