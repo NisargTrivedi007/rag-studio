@@ -8,13 +8,13 @@
       </div>
     } @else {
       @for (msg of store.messages(); track msg.id) {
-        <div class="mb-6" [class.flex]="msg.role === 'user'" [class.justify-end]="msg.role === 'user'">
+        <div class="mb-6 msg-animate" [class.flex]="msg.role === 'user'" [class.justify-end]="msg.role === 'user'">
           @if (msg.role === 'user') {
             <div class="max-w-[80%] rounded-2xl bg-[var(--color-panel)] px-4 py-2.5 text-sm">
               {{ msg.content }}
             </div>
           } @else {
-            <div class="text-sm leading-relaxed whitespace-pre-wrap">{{ msg.content }}</div>
+            <markdown [data]="msg.content" />
           }
         </div>
       }

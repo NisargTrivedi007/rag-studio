@@ -1,5 +1,69 @@
-<div class="flex h-screen items-center justify-center flex-col gap-4">
-  <h1 class="text-2xl font-semibold">Library</h1>
-  <p class="text-sm text-[var(--color-text-muted)]">Coming in Phase 2.</p>
-  <a routerLink="/" class="text-sm text-[var(--color-primary)] hover:underline">← Back to chat</a>
+<div class="route-animate flex h-screen flex-col">
+  <!-- Header -->
+  <header class="border-b border-[var(--color-border)] bg-[var(--color-panel)] px-6 py-4">
+    <div class="flex items-center justify-between max-w-3xl mx-auto w-full">
+      <div class="flex items-center gap-3">
+        <a routerLink="/" class="text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition">
+          ← Chat
+        </a>
+        <h1 class="text-xl font-semibold">Document Library</h1>
+      </div>
+      <button
+        (click)="fileInputEl?.click()"
+        [disabled]="uploading()"
+        class="flex items-center gap-2 rounded-lg bg-[var(--color-primary)] px-3 py-2 text-sm font-medium text-white hover:bg-[var(--color-primary-hover)] transition disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        <app-icon name="plus" [size]="16" />
+        Upload
+      </button>
+      <input
+        #fileInputEl
+        type="file"
+        class="hidden"
+        (change)="upload($event)"
+        accept=".pdf,.txt,.md,.docx,.xlsx,.doc"
+      >
+    </div>
+  </header>
+
+  <!-- Body -->
+  <div class="flex-1 overflow-y-auto px-6 py-8">
+    <div class="max-w-3xl mx-auto">
+      @if (loading()) {
+        <!-- Skeleton rows -->
+        @for (i of [1, 2, 3]; track i) {
+          <div class="mb-4 rounded-lg bg-[var(--color-panel)] p-4 h-20 animate-pulse"></div>
+        }
+      } @else if (docs().length === 0) {
+        <!-- Empty state -->
+        <div class="flex flex-col items-center justify-center py-12">
+          <div class="mb-4 text-6xl text-[var(--color-text-muted)]">📄</div>
+          <p class="text-center text-[var(--color-text-muted)]">
+            No documents yet. Upload one to get started.
+          </p>
+        </div>
+      } @else {
+        <!-- Doc list -->
+        <div class="space-y-2">
+          @for (doc of docs(); track doc.id) {
+            <div class="flex items-center justify-between rounded-lg border border-[var(--color-border)] bg-[var(--color-panel)] p-4 hover:bg-[var(--color-panel-hover)] transition">
+              <div class="flex-1 min-w-0">
+                <p class="font-medium text-[var(--color-text)] truncate">{{ doc.filename }}</p>
+                <p class="text-xs text-[var(--color-text-muted)]">
+                  {{ doc.fileType }} • {{ formatDate(doc.uploadedAt) }}
+                </p>
+              </div>
+              <button
+                (click)="deleteDoc(doc.id)"
+                [attr.aria-label]="'Delete ' + doc.filename"
+                class="ml-4 text-[var(--color-text-muted)] hover:text-red-500 transition"
+              >
+                <app-icon name="trash" [size]="18" />
+              </button>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  </div>
 </div>

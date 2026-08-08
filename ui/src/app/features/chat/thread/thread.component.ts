@@ -1,8 +1,10 @@
 import { Component, ElementRef, effect, inject, viewChild } from '@angular/core';
+import { MarkdownComponent } from 'ngx-markdown';
 import { ChatStore } from '../chat.store';
 
 @Component({
   selector: 'app-thread',
+  imports: [MarkdownComponent],
   templateUrl: './thread.component.html',
 })
 export class ThreadComponent {

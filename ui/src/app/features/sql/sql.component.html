@@ -1,5 +1,100 @@
-<div class="flex h-screen items-center justify-center flex-col gap-4">
-  <h1 class="text-2xl font-semibold">Data Explorer</h1>
-  <p class="text-sm text-[var(--color-text-muted)]">Coming in Phase 3.</p>
-  <a routerLink="/" class="text-sm text-[var(--color-primary)] hover:underline">← Back to chat</a>
+<div class="route-animate flex h-screen flex-col">
+  <!-- Header -->
+  <header class="border-b border-[var(--color-border)] bg-[var(--color-panel)] px-6 py-4">
+    <div class="flex items-center justify-between max-w-3xl mx-auto w-full">
+      <div class="flex items-center gap-3">
+        <a routerLink="/" class="text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition">
+          ← Chat
+        </a>
+        <h1 class="text-xl font-semibold">Data Explorer</h1>
+      </div>
+      <button
+        (click)="toggleSchema()"
+        class="text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition"
+      >
+        {{ showSchema() ? 'Hide' : 'View' }} Schema
+      </button>
+    </div>
+  </header>
+
+  <!-- Body -->
+  <div class="flex-1 overflow-y-auto px-6 py-8">
+    <div class="max-w-3xl mx-auto space-y-6">
+      <!-- Question input -->
+      <div>
+        <textarea
+          [value]="question()"
+          (input)="question.set($any($event.target).value)"
+          (keydown)="handleKeydown($event)"
+          [disabled]="loading()"
+          placeholder="Ask a question about the data..."
+          class="w-full h-24 rounded-lg border border-[var(--color-border)] bg-[var(--color-input)] p-3 text-sm text-[var(--color-text)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-primary)] transition disabled:opacity-50 disabled:cursor-not-allowed"
+        ></textarea>
+        <div class="mt-3 flex gap-2">
+          <button
+            (click)="ask()"
+            [disabled]="!canAsk()"
+            class="flex items-center gap-2 rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--color-primary-hover)] transition disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <app-icon name="send" [size]="16" />
+            Ask
+          </button>
+        </div>
+      </div>
+
+      <!-- Schema block -->
+      @if (showSchema() && schema()) {
+        <div class="rounded-lg border border-[var(--color-border)] bg-[var(--color-panel)] p-4">
+          <p class="mb-2 text-xs font-semibold uppercase text-[var(--color-text-muted)]">Database Schema</p>
+          <pre class="overflow-x-auto text-xs"><code [textContent]="schema()"></code></pre>
+        </div>
+      }
+
+      <!-- Loading state -->
+      @if (loading()) {
+        <div class="flex items-center gap-1 py-4">
+          <span class="h-2 w-2 animate-pulse rounded-full bg-[var(--color-primary)]" style="animation-delay: 0ms"></span>
+          <span class="h-2 w-2 animate-pulse rounded-full bg-[var(--color-primary)]" style="animation-delay: 150ms"></span>
+          <span class="h-2 w-2 animate-pulse rounded-full bg-[var(--color-primary)]" style="animation-delay: 300ms"></span>
+        </div>
+      }
+
+      <!-- Results -->
+      @if (result()) {
+        <div class="space-y-4">
+          <!-- Generated SQL -->
+          <div class="rounded-lg border border-[var(--color-border)] bg-[var(--color-panel)] p-4">
+            <p class="mb-2 text-xs font-semibold uppercase text-[var(--color-text-muted)]">Generated SQL</p>
+            <pre class="overflow-x-auto text-xs"><code [textContent]="result()!.sql"></code></pre>
+          </div>
+
+          <!-- Results table -->
+          <div class="rounded-lg border border-[var(--color-border)] bg-[var(--color-panel)] overflow-x-auto">
+            @if (result()!.results.length === 0) {
+              <div class="p-4 text-sm text-[var(--color-text-muted)]">No results returned.</div>
+            } @else {
+              <table class="w-full text-xs">
+                <thead>
+                  <tr class="border-b border-[var(--color-border)]">
+                    @for (col of columns(); track col) {
+                      <th class="text-left px-4 py-2 font-semibold text-[var(--color-text-muted)]">{{ col }}</th>
+                    }
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of result()!.results; track $index) {
+                    <tr class="border-b border-[var(--color-border)] hover:bg-[var(--color-panel-hover)]">
+                      @for (col of columns(); track col) {
+                        <td class="px-4 py-2">{{ row[col] }}</td>
+                      }
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  </div>
 </div>
