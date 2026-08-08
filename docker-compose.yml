@@ -27,11 +27,7 @@ services:
       context: ./ui
       dockerfile: Dockerfile
     container_name: ragui
-    depends_on:
-      api:
-        condition: service_healthy
     ports:
-      - "4200:4200"
+      - "3000:80"
     environment:
-      API_URL: "http://api:8080"
-    command: npm start
+      BACKEND_URL: "http://api:8080"
