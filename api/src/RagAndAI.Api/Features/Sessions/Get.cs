@@ -24,7 +24,7 @@ public class GetEndpoint
             session.CreatedAt,
             session.UpdatedAt,
             session.Documents.Select(d => new DocumentSummary(d.Id, d.Filename, d.FileType)).ToList(),
-            session.Messages.Select(m => new MessageSummary(m.Id, m.Role, m.Content, m.CreatedAt)).ToList());
+            session.Messages.OrderBy(m => m.CreatedAt).Select(m => new MessageSummary(m.Id, m.Role, m.Content, m.CreatedAt)).ToList());
 
         return Results.Ok(response);
     }
