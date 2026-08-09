@@ -14,7 +14,7 @@ export class ThreadComponent {
   constructor() {
     // Auto-scroll to bottom whenever the message list or sending state changes.
     effect(() => {
-      this.store.messages().length;
+      this.store.messages();
       this.store.sending();
       queueMicrotask(() => {
         const el = this.scrollContainer()?.nativeElement;
