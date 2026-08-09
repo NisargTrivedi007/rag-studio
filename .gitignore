@@ -24,6 +24,12 @@ appsettings.local.json
 .env.local
 .claude/settings.local.json
 
+## Claude Code project data (plans, memory, agent configs)
+.claude/
+
+## Issue screenshots and local assets
+Issue images/
+
 ## UI build & test artifacts
 ui/dist/
 ui/node_modules/
