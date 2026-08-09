@@ -14,7 +14,16 @@ export class MessageInputComponent {
   protected attachedFile = signal<File | null>(null);
   protected fileInput = viewChild<ElementRef<HTMLInputElement>>('fileInputEl');
 
-  readonly canSend = computed(() => this.text().trim().length > 0 && !this.store.sending());
+  readonly hasDocContext = computed(() =>
+    this.attachedFile() !== null ||
+    (this.store.currentSession()?.documents.length ?? 0) > 0
+  );
+
+  readonly canSend = computed(() =>
+    this.text().trim().length > 0 &&
+    !this.store.sending() &&
+    this.hasDocContext()
+  );
 
   handleEnter(event: Event) {
     const ke = event as KeyboardEvent;

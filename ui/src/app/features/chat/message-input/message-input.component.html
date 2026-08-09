@@ -51,6 +51,10 @@
     </div>
   </div>
   <p class="mt-2 text-center text-xs text-[var(--color-text-muted)]">
-    Answers come from your attached document only.
+    @if (!hasDocContext()) {
+      Attach a document before sending.
+    } @else {
+      Answers come from your attached document only.
+    }
   </p>
 </div>
