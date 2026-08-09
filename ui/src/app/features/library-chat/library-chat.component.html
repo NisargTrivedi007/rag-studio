@@ -1,0 +1,98 @@
+<div class="route-animate flex h-screen flex-col">
+  <!-- Header -->
+  <header class="border-b border-[var(--color-border)] bg-[var(--color-panel)] px-6 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <a routerLink="/" class="text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition">
+        ← Chat
+      </a>
+      <h1 class="text-base font-semibold">Library Chat</h1>
+    </div>
+    @if (store.messages().length > 0) {
+      <button
+        (click)="store.clearChat()"
+        class="text-sm text-[var(--color-text-muted)] hover:text-[var(--color-accent)] transition"
+      >
+        Clear
+      </button>
+    }
+  </header>
+
+  <!-- Thread -->
+  <div #scrollContainer class="flex-1 overflow-y-auto px-6 py-8">
+    <div class="mx-auto max-w-3xl">
+      @if (store.loading() && store.messages().length === 0) {
+        <div class="flex justify-center py-12">
+          <span class="text-sm text-[var(--color-text-muted)]">Loading...</span>
+        </div>
+      } @else if (store.messages().length === 0) {
+        <div class="flex flex-col items-center justify-center py-16 text-center">
+          <div class="mb-3 text-4xl">📚</div>
+          <p class="text-sm text-[var(--color-text-muted)]">
+            Ask anything about your library documents.
+          </p>
+          <p class="mt-1 text-xs text-[var(--color-text-muted)]">
+            No documents yet?
+            <a routerLink="/library" class="underline hover:text-[var(--color-text)] transition">Upload from Library</a>
+          </p>
+        </div>
+      } @else {
+        @for (msg of store.messages(); track msg.id) {
+          <div class="mb-6 msg-animate" [class.flex]="msg.role === 'user'" [class.justify-end]="msg.role === 'user'">
+            @if (msg.role === 'user') {
+              <div class="max-w-[80%] rounded-2xl bg-[var(--color-panel)] px-4 py-2.5 text-sm">
+                {{ msg.content }}
+              </div>
+            } @else {
+              <markdown [data]="msg.content" />
+            }
+          </div>
+        }
+
+        @if (store.sending()) {
+          <div class="mb-6 flex items-center gap-1">
+            <span class="h-2 w-2 animate-pulse rounded-full bg-[var(--color-primary)]" style="animation-delay: 0ms"></span>
+            <span class="h-2 w-2 animate-pulse rounded-full bg-[var(--color-primary)]" style="animation-delay: 150ms"></span>
+            <span class="h-2 w-2 animate-pulse rounded-full bg-[var(--color-primary)]" style="animation-delay: 300ms"></span>
+          </div>
+        }
+      }
+    </div>
+  </div>
+
+  <!-- Error banner -->
+  @if (store.error()) {
+    <div class="mx-auto mb-2 max-w-3xl px-6">
+      <div class="rounded-lg border border-red-300 bg-red-50 px-4 py-2 text-sm text-red-700 dark:border-red-700 dark:bg-red-950 dark:text-red-300">
+        {{ store.error() }}
+      </div>
+    </div>
+  }
+
+  <!-- Input -->
+  <div class="mx-auto w-full max-w-3xl px-6 pb-6">
+    <div class="flex flex-col rounded-2xl border border-[var(--color-border)] bg-[var(--color-input)] shadow-sm focus-within:border-[var(--color-primary)]">
+      <textarea
+        [ngModel]="text()"
+        (ngModelChange)="text.set($event)"
+        (keydown.enter)="handleEnter($event)"
+        rows="1"
+        placeholder="Ask about your library documents..."
+        class="max-h-40 w-full resize-none bg-transparent px-4 py-3 text-sm outline-none placeholder:text-[var(--color-text-muted)]"
+      ></textarea>
+
+      <div class="flex items-center justify-end px-3 pb-2">
+        <button
+          (click)="send()"
+          [disabled]="!text().trim() || store.sending()"
+          class="flex cursor-pointer items-center justify-center rounded-lg bg-[var(--color-primary)] p-2 text-white transition hover:bg-[var(--color-primary-hover)] disabled:cursor-not-allowed disabled:opacity-40"
+          aria-label="Send"
+        >
+          <app-icon name="send" [size]="16" />
+        </button>
+      </div>
+    </div>
+    <p class="mt-2 text-center text-xs text-[var(--color-text-muted)]">
+      Searches across all your library documents.
+    </p>
+  </div>
+</div>

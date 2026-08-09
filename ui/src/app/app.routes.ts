@@ -13,5 +13,9 @@ export const routes: Routes = [
     path: 'sql',
     loadComponent: () => import('./features/sql/sql.component').then(m => m.SqlComponent),
   },
+  {
+    path: 'library-chat',
+    loadComponent: () => import('./features/library-chat/library-chat.component').then(m => m.LibraryChatComponent),
+  },
   { path: '**', redirectTo: '' },
 ];

@@ -38,4 +38,8 @@ export class SessionsApi {
       libraryDocumentIds,
     });
   }
+
+  libraryChat(id: string, question: string) {
+    return this.http.post<ChatResponse>(`${this.base}/${id}/library-chat`, { question });
+  }
 }
