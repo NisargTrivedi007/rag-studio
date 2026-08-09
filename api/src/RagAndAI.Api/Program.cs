@@ -117,6 +117,12 @@ sessionsGroup.MapPost("/{id}/chat", RagAndAI.Api.Features.Sessions.ChatEndpoint.
     .Produces<RagAndAI.Api.Features.Sessions.SessionChatResponse>(StatusCodes.Status200OK)
     .Produces(StatusCodes.Status404NotFound)
     .Produces(StatusCodes.Status400BadRequest);
+sessionsGroup.MapPost("/{id}/library-chat", RagAndAI.Api.Features.Sessions.LibraryChatEndpoint.Handle)
+    .WithName("LibraryChat")
+    .WithSummary("Chat using all library documents as context")
+    .Produces<RagAndAI.Api.Features.Sessions.SessionChatResponse>(StatusCodes.Status200OK)
+    .Produces(StatusCodes.Status404NotFound)
+    .Produces(StatusCodes.Status400BadRequest);
 
 var sqlGroup = app.MapGroup("/sql").WithOpenApi();
 sqlGroup.MapPost("/query", ExecuteEndpoint.Handle)
