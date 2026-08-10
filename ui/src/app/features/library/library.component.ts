@@ -16,6 +16,7 @@ import { IconComponent } from '../../shared/icons/icon.component';
 export class LibraryComponent {
   private api = inject(DocumentsApi);
   protected uploading = signal(false);
+  protected error = signal<string | null>(null);
 
   private docsResource = rxResource<DocumentSummary[], void>({
     stream: () => this.api.list(),
@@ -28,10 +29,13 @@ export class LibraryComponent {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     if (!file) return;
+    this.error.set(null);
     this.uploading.set(true);
     try {
       await firstValueFrom(this.api.upload(file));
       this.docsResource.reload();
+    } catch {
+      this.error.set('Upload failed. Please try again.');
     } finally {
       this.uploading.set(false);
       input.value = '';
