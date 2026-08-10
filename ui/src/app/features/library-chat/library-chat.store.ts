@@ -24,10 +24,13 @@ export class LibraryChatStore {
   readonly session = this.sessionResource.value;
   readonly loading = this.sessionResource.isLoading;
 
-  readonly messages = computed(() => [
-    ...(this.session()?.messages ?? []),
-    ...this.pending(),
-  ]);
+  readonly messages = computed(() => {
+    const server = this.session()?.messages ?? [];
+    const pending = this.pending();
+    if (pending.length === 0) return server;
+    const serverSet = new Set(server.map(m => `${m.role}:${m.content}`));
+    return [...server, ...pending.filter(p => !serverSet.has(`${p.role}:${p.content}`))];
+  });
 
   async sendMessage(question: string) {
     if (this.sending()) return;

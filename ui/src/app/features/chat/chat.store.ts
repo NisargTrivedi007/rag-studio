@@ -35,7 +35,10 @@ export class ChatStore {
   // Merged view: server messages + optimistic pending
   readonly messages = computed(() => {
     const server = this.currentSession()?.messages ?? [];
-    return [...server, ...this.pending()];
+    const pending = this.pending();
+    if (pending.length === 0) return server;
+    const serverSet = new Set(server.map(m => `${m.role}:${m.content}`));
+    return [...server, ...pending.filter(p => !serverSet.has(`${p.role}:${p.content}`))];
   });
 
   readonly hasCurrent = computed(() => this.currentSession() !== null || this.pending().length > 0);
