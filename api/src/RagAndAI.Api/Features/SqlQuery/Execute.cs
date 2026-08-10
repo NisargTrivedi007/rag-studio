@@ -10,7 +10,7 @@ public class ExecuteEndpoint
         CancellationToken ct)
     {
         var result = await nlToSqlService.ExecuteAsync(request.Question, ct);
-        return new SqlQueryResponse(result.Sql, result.Results);
+        return new SqlQueryResponse(result.Sql, result.Results, result.Summary);
     }
 }
 
@@ -18,4 +18,5 @@ public record SqlQueryRequest(string Question);
 
 public record SqlQueryResponse(
     string Sql,
-    List<Dictionary<string, object>> Results);
+    List<Dictionary<string, object>> Results,
+    string Summary);

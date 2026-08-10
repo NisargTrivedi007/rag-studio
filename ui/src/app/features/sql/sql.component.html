@@ -62,37 +62,53 @@
       <!-- Results -->
       @if (result()) {
         <div class="space-y-4">
-          <!-- Generated SQL -->
-          <div class="rounded-lg border border-[var(--color-border)] bg-[var(--color-panel)] p-4">
-            <p class="mb-2 text-xs font-semibold uppercase text-[var(--color-text-muted)]">Generated SQL</p>
-            <pre class="overflow-x-auto text-xs"><code [textContent]="result()!.sql"></code></pre>
-          </div>
+          <!-- Natural language summary -->
+          @if (result()!.summary) {
+            <div class="rounded-2xl bg-[var(--color-panel)] px-5 py-4 text-sm leading-relaxed text-[var(--color-text)]">
+              {{ result()!.summary }}
+            </div>
+          }
 
-          <!-- Results table -->
-          <div class="rounded-lg border border-[var(--color-border)] bg-[var(--color-panel)] overflow-x-auto">
-            @if (result()!.results.length === 0) {
-              <div class="p-4 text-sm text-[var(--color-text-muted)]">No results returned.</div>
-            } @else {
-              <table class="w-full text-xs">
-                <thead>
-                  <tr class="border-b border-[var(--color-border)]">
-                    @for (col of columns(); track col) {
-                      <th class="text-left px-4 py-2 font-semibold text-[var(--color-text-muted)]">{{ col }}</th>
-                    }
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (row of result()!.results; track $index) {
-                    <tr class="border-b border-[var(--color-border)] hover:bg-[var(--color-panel-hover)]">
+          <!-- Collapsible SQL -->
+          <details class="rounded-lg border border-[var(--color-border)]">
+            <summary class="cursor-pointer px-4 py-2 text-xs font-semibold uppercase text-[var(--color-text-muted)] select-none">
+              Generated SQL
+            </summary>
+            <div class="border-t border-[var(--color-border)] p-4">
+              <pre class="overflow-x-auto text-xs"><code [textContent]="result()!.sql"></code></pre>
+            </div>
+          </details>
+
+          <!-- Data table -->
+          @if (result()!.results.length > 0) {
+            <details class="rounded-lg border border-[var(--color-border)]" open>
+              <summary class="cursor-pointer px-4 py-2 text-xs font-semibold uppercase text-[var(--color-text-muted)] select-none">
+                Data ({{ result()!.results.length }} row{{ result()!.results.length === 1 ? '' : 's' }})
+              </summary>
+              <div class="border-t border-[var(--color-border)] overflow-x-auto">
+                <table class="w-full text-xs">
+                  <thead>
+                    <tr class="border-b border-[var(--color-border)]">
                       @for (col of columns(); track col) {
-                        <td class="px-4 py-2">{{ row[col] }}</td>
+                        <th class="text-left px-4 py-2 font-semibold text-[var(--color-text-muted)]">{{ col }}</th>
                       }
                     </tr>
-                  }
-                </tbody>
-              </table>
-            }
-          </div>
+                  </thead>
+                  <tbody>
+                    @for (row of result()!.results; track $index) {
+                      <tr class="border-b border-[var(--color-border)] hover:bg-[var(--color-panel-hover)]">
+                        @for (col of columns(); track col) {
+                          <td class="px-4 py-2">{{ row[col] }}</td>
+                        }
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          } @else {
+            <p class="text-sm text-[var(--color-text-muted)]">No rows returned.</p>
+          }
         </div>
       }
     </div>

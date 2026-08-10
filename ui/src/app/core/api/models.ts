@@ -50,4 +50,5 @@ export interface SqlSchemaResponse {
 export interface SqlQueryResponse {
   sql: string;
   results: Record<string, unknown>[];
+  summary: string;
 }
