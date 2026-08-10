@@ -29,6 +29,10 @@ export class MessageInputComponent {
     const ke = event as KeyboardEvent;
     if (ke.shiftKey) return;
     ke.preventDefault();
+    if (!this.hasDocContext()) {
+      this.openFilePicker();
+      return;
+    }
     this.send();
   }
 
